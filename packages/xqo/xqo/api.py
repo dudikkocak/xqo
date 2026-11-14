@@ -19,7 +19,9 @@ from .departments import HQ, NAME_RE, PACKAGED_DEPARTMENTS, resolve_dir
 from .fences import normalize_path
 from .models import Event, Task, new_id, utcnow
 from .plugin import API_VERSION, ENTRY_POINT_GROUP, Plugin, PluginContext, quiet_server
-from .sandbox import Backend, Sandbox, docker_available, register_backend, use_toolchains
+from .sandbox import (DOCKER_PATH, Backend, Sandbox, SandboxConfig, current_toolchains, docker_available, docker_kill,
+                      docker_user, is_python_project, mount_hint, net_args, register_backend, setup_net_args,
+                      use_toolchains, uv_pip_command)
 from .store import SEED_KINDS, EventStore, JsonlStore, register_store, store_path
 from .web import AttachmentIn, decode_attachments
 
@@ -32,7 +34,9 @@ __all__ = [
     # storage backends
     "EventStore", "JsonlStore", "SEED_KINDS", "register_store", "store_path",
     # sandbox backends and toolchains
-    "Backend", "Sandbox", "register_backend", "use_toolchains", "docker_available",
+    "Backend", "Sandbox", "SandboxConfig", "register_backend", "use_toolchains", "current_toolchains",
+    "docker_available", "docker_kill", "docker_user", "net_args", "setup_net_args", "DOCKER_PATH",
+    "is_python_project", "mount_hint", "uv_pip_command",
     # attachments, paths, departments, branding, avatars
     "AttachmentIn", "decode_attachments", "AttachmentStore", "validate_attachments", "safe_name",
     "normalize_path", "HQ", "NAME_RE", "PACKAGED_DEPARTMENTS", "resolve_dir",

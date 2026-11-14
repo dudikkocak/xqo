@@ -23,6 +23,47 @@ jobs:
       - name: Tests
         run: uv run --no-project python -m pytest packages/xqo/tests -q --timeout 120
 
+  # each plugin package is tested against the base package only, so it can't lean on another plugin
+  plugins:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [xqo-sqlite, xqo-docker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install xqo and ${{ matrix.package }}
+        run: uv pip install -e "packages/xqo[dev]" -e "packages/${{ matrix.package }}[dev]"
+      - name: Tests
+        run: uv run --no-project python -m pytest packages/${{ matrix.package }}/tests -q --timeout 120
+
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: xqo
+          POSTGRES_PASSWORD: xqo
+          POSTGRES_DB: xqo_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U xqo" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      XQO_TEST_PG_DSN: postgresql://xqo:xqo@localhost:5432/xqo_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install xqo and xqo-postgres
+        run: uv pip install -e "packages/xqo[dev]" -e "packages/xqo-postgres[dev]"
+      - name: Tests (they skip without XQO_TEST_PG_DSN, so check that none did)
+        run: uv run --no-project python -m pytest packages/xqo-postgres/tests -q --timeout 120 -rs | tee out.txt && ! grep -q skipped out.txt
+
   wheel:
     runs-on: ubuntu-latest
     steps:
@@ -30,12 +71,16 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
-      - name: Build the wheel and check its files
-        run: uv run --no-project python tools/check_wheel.py packages/xqo
+      - name: Build the wheels and check their files
+        run: |
+          for p in xqo xqo-sqlite xqo-postgres xqo-docker; do
+            uv run --no-project python tools/check_wheel.py packages/$p
+          done
       - name: Install the wheel and import the public API
         run: |
-          uv build --wheel --out-dir dist packages/xqo
+          for p in xqo xqo-sqlite xqo-postgres xqo-docker; do uv build --wheel --out-dir dist packages/$p; done
           uv venv /tmp/w
-          uv pip install --python /tmp/w/bin/python dist/xqo-*.whl
+          uv pip install --python /tmp/w/bin/python dist/*.whl
           /tmp/w/bin/python -c "import xqo.api as a; print(a.__version__, a.API_VERSION)"
           /tmp/w/bin/xqo --help > /dev/null
+          /tmp/w/bin/python -c "import json, pathlib, tempfile; from xqo.config import build; d = pathlib.Path(tempfile.mkdtemp()); c = d / 'agents.json'; c.write_text(json.dumps({'agents': [{'name': 'p', 'skills': ['planning']}]})); s = build(c, d / 'a', str(d / 'l' / 'e.jsonl'), mock=True, departments='none').plugins.states; bad = [n for n in ('sqlite', 'postgres', 'docker') if s[n].state not in ('active', 'inactive')]; assert not bad, bad"

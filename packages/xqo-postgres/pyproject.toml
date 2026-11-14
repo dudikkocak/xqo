@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xqo-postgres"
+version = "3.0.0"
+description = "Postgres event store for xqo"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "dudikkocak"}]
+dependencies = [
+  "xqo>=3.0,<4",
+  "psycopg[binary]>=3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-timeout>=2.3"]
+
+[project.urls]
+Homepage = "https://github.com/dudikkocak/xqo"
+
+[project.entry-points."xqo.plugins"]
+postgres = "xqo_postgres:PostgresPlugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]

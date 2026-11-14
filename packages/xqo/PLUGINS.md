@@ -122,7 +122,9 @@ thrown in an `XQO.on` handler is logged in the browser console and does not stop
 ## Smaller extension points
 
 - **Sandbox backend**: subclass `xqo.api.Backend`, decorate with `@register_backend` in your plugin's
-  `register()`, then `"sandbox": {"backend": "<name>"}` (see the `xqo-docker` package).
+  `register()`, then `"sandbox": {"backend": "<name>"}` (see the `xqo-docker` package). A container backend can
+  use `current_toolchains()`, `docker_user`, `docker_kill`, `net_args`, `setup_net_args` and `mount_hint` from
+  `xqo.api`.
 - **Channel adapter** (with `xqo-channels`): subclass its `Adapter` and declare an entry point in the group
   `xqo.channels` (`discord = "pkg:DiscordAdapter"`); use it with `"channels": {"chat": {"type": "discord"}}`. The
   channels hub keeps the access modes and the responder tool filter, so an adapter cannot widen them.
@@ -130,6 +132,7 @@ thrown in an `XQO.on` handler is logged in the browser console and does not stop
   `factory(cfg, logs_dir)` returns an `EventStore` (`append`, `recent`, `seeds`, `tree`, `by_kind_prefix`, `purge`,
   `iter_all`, `count`, `backup_files`, `describe`, `close`) and checks its own keys in `cfg`; `store_path` resolves
   a file name against the logs dir. The `xqo-sqlite` and `xqo-postgres` packages are the examples, and the
-  contract test in `tests/test_store.py` is what every backend must pass.
+  contract checks in `xqo.testing` (`check_event_store(store)`, `check_restart_keeps_tasks(tmp_path, storage)`) are
+  what every backend must pass: call them from the package's own tests.
 - **Toolchains**: the sandbox calls whatever module was given to `xqo.api.use_toolchains(module)`
   (`detect`, `prepare`, `copy_ignore`, `describe`, `walk`, `is_python_project`); the `xqo-toolchains` package does that.

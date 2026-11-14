@@ -18,9 +18,8 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install xqo
-        run: |
-          uv venv
-          uv pip install -e "packages/xqo[dev]"
+        # setup-uv with python-version already creates and activates .venv
+        run: uv pip install -e "packages/xqo[dev]"
       - name: Tests
         run: uv run --no-project python -m pytest packages/xqo/tests -q --timeout 120
 

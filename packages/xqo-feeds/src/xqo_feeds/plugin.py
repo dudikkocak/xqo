@@ -171,14 +171,14 @@ class FeedsPlugin(Plugin):
     def routes(self, app, bus) -> None:
         # ---- local feeds (feeds/) -------------------------------------------------------
         def hub():
-            f = getattr(bus, "feeds", None)
+            f = bus.plugins.service("feeds")
             if not f:
                 raise HTTPException(404, "no feeds configured (\"feeds\" in agents.json)")
             return f
 
         @app.get("/api/feeds")
         async def feeds_status():
-            f = getattr(bus, "feeds", None)
+            f = bus.plugins.service("feeds")
             return {"enabled": bool(f), **(f.status() if f else {})}
 
         @app.get("/api/feeds/{name}/events")

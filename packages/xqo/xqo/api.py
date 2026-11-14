@@ -9,6 +9,7 @@ that breaks something listed here raises API_VERSION and the major version of xq
 from __future__ import annotations
 
 from . import __version__
+from .artifacts import max_file_bytes
 from .attachments import AttachmentStore, safe_name, validate as validate_attachments
 from .avatars import public as public_avatar, resolve_avatar
 from .branding import DEFAULT_TITLE, hq_name, named_page, title
@@ -38,7 +39,7 @@ __all__ = [
     "docker_available", "docker_kill", "docker_user", "net_args", "setup_net_args", "DOCKER_PATH",
     "is_python_project", "mount_hint", "uv_pip_command",
     # attachments, paths, departments, branding, avatars
-    "AttachmentIn", "decode_attachments", "AttachmentStore", "validate_attachments", "safe_name",
+    "AttachmentIn", "decode_attachments", "AttachmentStore", "validate_attachments", "safe_name", "max_file_bytes",
     "normalize_path", "HQ", "NAME_RE", "PACKAGED_DEPARTMENTS", "resolve_dir",
     "DEFAULT_TITLE", "hq_name", "title", "named_page", "public_avatar", "resolve_avatar",
     # building a bus from agents.json, and calling a running server (CLI commands)

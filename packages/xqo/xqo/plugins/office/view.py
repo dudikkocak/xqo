@@ -124,7 +124,9 @@ def _idle(v) -> dict:
 
 def own_name(bus) -> str:
     cfg = getattr(bus, "office", None) or OfficeConfig()
-    return cfg.name or (bus.peers.name if getattr(bus, "peers", None) else "hq")
+    plugins = getattr(bus, "plugins", None)
+    peers = plugins.service("peering") if plugins else None  # xqo-peering, when installed and configured
+    return cfg.name or (peers.name if peers else "hq")
 
 
 def planners(bus) -> list[str]:

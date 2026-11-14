@@ -593,7 +593,7 @@ class FeedHub:
         self.bus.emit(Event("feed_alert", "feeds", "user", None, None, f"⚠ {r.name}: {open_['text']}",
                             {"alert": open_["id"], "rule": r.name, "feed": ev.feed, "severity": ev.severity,
                              "count": open_["count"]}))
-        ch = getattr(self.bus, "channels", None)
+        ch = self.bus.plugins.service("channels")
         if ch and r.notify_channels and open_["count"] == 1 and not self.quiet(r):
             self.bus.spawn(ch.notify(f"[feeds] {r.name}: {open_['text'][:500]}"))
 

@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [xqo-sqlite, xqo-docker, xqo-agency, xqo-toolchains, xqo-schedules, xqo-feeds]
+        package: [xqo-sqlite, xqo-docker, xqo-agency, xqo-toolchains, xqo-schedules, xqo-feeds, xqo-channels, xqo-peering]
         include:
           - package: xqo-toolchains
             with: -e packages/xqo-docker  # its docker tests need the docker backend
@@ -88,4 +88,4 @@ jobs:
           uv pip install --python /tmp/w/bin/python dist/*.whl
           /tmp/w/bin/python -c "import xqo.api as a; print(a.__version__, a.API_VERSION)"
           /tmp/w/bin/xqo --help > /dev/null
-          /tmp/w/bin/python -c "import json, pathlib, tempfile; from xqo.config import build; d = pathlib.Path(tempfile.mkdtemp()); c = d / 'agents.json'; c.write_text(json.dumps({'agents': [{'name': 'p', 'skills': ['planning']}]})); s = build(c, d / 'a', str(d / 'l' / 'e.jsonl'), mock=True, departments='none').plugins.states; bad = [n for n in ('sqlite', 'postgres', 'docker', 'toolchains', 'agency', 'schedules', 'feeds') if s[n].state not in ('active', 'inactive')]; assert not bad, bad"
+          /tmp/w/bin/python -c "import json, pathlib, tempfile; from xqo.config import build; d = pathlib.Path(tempfile.mkdtemp()); c = d / 'agents.json'; c.write_text(json.dumps({'agents': [{'name': 'p', 'skills': ['planning']}]})); s = build(c, d / 'a', str(d / 'l' / 'e.jsonl'), mock=True, departments='none').plugins.states; bad = [n for n in ('sqlite', 'postgres', 'docker', 'toolchains', 'agency', 'schedules', 'feeds', 'channels', 'peering') if s[n].state not in ('active', 'inactive')]; assert not bad, bad"

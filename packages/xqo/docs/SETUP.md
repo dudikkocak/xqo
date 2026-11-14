@@ -32,7 +32,7 @@ Every xqo instance is one process. It keeps all of its state in its own data dir
 
 Department budgets, the *No limits* hour, the trash, the archive, the schedules and the agency imports (`agency.json` next to `agents.json`) are per instance too.
 
-Messaging channels (`"channels"` in the config, see [CHANNELS.md](CHANNELS.md)) are per instance as well: give each instance its own bot, number or account. Two instances polling the same Telegram bot, X account, mailbox or Twilio number would take each other's messages, and their conversation state lives in each data dir (`artifacts/channels/`).
+Messaging channels (`"channels"` in the config, see [xqo-channels](https://github.com/dudikkocak/xqo/tree/main/packages/xqo-channels)) are per instance as well: give each instance its own bot, number or account. Two instances polling the same Telegram bot, X account, mailbox or Twilio number would take each other's messages, and their conversation state lives in each data dir (`artifacts/channels/`).
 
 Local feeds (`"feeds"`, see [xqo-feeds](https://github.com/dudikkocak/xqo/tree/main/packages/xqo-feeds)) are watched by the instance that runs the scheduler of its data dir. Instances on one machine each see the same CPU, disks and logs, so give the system-wide rules to one of them; push feeds and `feeds.listen` ports need different names or ports per instance.
 

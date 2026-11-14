@@ -29,6 +29,11 @@ SAFE = re.compile(r"[^A-Za-z0-9_.-]+")
 MAX_FILE_BYTES = 5_000_000  # text file written by an agent; "limits.workspace_file_mb" (limits.apply_limits)
 
 
+def max_file_bytes() -> int:
+    """The current limit for a text file in a workspace (it changes with limits.workspace_file_mb)."""
+    return MAX_FILE_BYTES
+
+
 def fence_kind(f: Fence) -> str:
     """What a fenced block does: truncated | diff | search_replace | file | snippet."""
     if not f.closed:

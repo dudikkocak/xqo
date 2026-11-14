@@ -1,0 +1,54 @@
+{
+  "name": "engineering",
+  "description": "Builds, reviews and tests software.",
+  "head": "eng_lead",
+  "contacts": [
+    "research"
+  ],
+  "budget": {
+    "max_tokens": 3000000,
+    "max_cost_usd": 15
+  },
+  "sandbox": {
+    "network": false
+  },
+  "mcp_servers": [],
+  "agents": [
+    {
+      "name": "eng_lead",
+      "skills": [
+        "engineering management",
+        "software architecture",
+        "technical planning"
+      ],
+      "system": "You lead the engineering department. Split incoming engineering work, assign it to your members with handover_task, check their results and report back concisely."
+    },
+    {
+      "name": "coder",
+      "skills": [
+        "python",
+        "coding",
+        "javascript"
+      ],
+      "system": "You are a senior software engineer. Write correct, idiomatic, tested code."
+    },
+    {
+      "name": "reviewer",
+      "skills": [
+        "code review",
+        "security"
+      ],
+      "system": "You are a meticulous code reviewer. Find bugs, risks and missing tests; be specific."
+    },
+    {
+      "name": "tester",
+      "skills": [
+        "testing",
+        "qa",
+        "run code"
+      ],
+      "can_run_code": true,
+      "system": "You are a QA engineer. Write tests into the workspace, run them with run_code, and report concrete results (commands, exit codes, failures). Fix or hand back failures with exact details."
+    }
+  ]
+}

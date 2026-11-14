@@ -1,6 +1,6 @@
 # Claude Agent SDK in Docker
 
-With the SDK backend every agent runs as a Claude Code session. xqo-lite always installs it, in the image too:
+With the SDK backend every agent runs as a Claude Code session. xqo always installs it, in the image too:
 
 ```bash
 ./docker-startup.sh                # Linux / macOS / WSL2
@@ -92,7 +92,7 @@ Outside Docker, put the token (alone, or as a `CLAUDE_CODE_OAUTH_TOKEN=` line) i
 so it is never served, zipped or backed up.
 
 Note: code that agents run on the `local` sandbox backend runs in the same container and could read `.env` there,
-as it could read the token file; full xqo's Docker sandbox backend is the option when that matters (not included in xqo-lite).
+as it could read the token file; the Docker sandbox backend (`pip install xqo-docker`) is the option when that matters.
 
 ## Copy the Claude Code login into .env, on demand
 

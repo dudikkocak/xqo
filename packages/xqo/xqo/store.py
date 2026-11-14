@@ -1,14 +1,17 @@
 """Where xqo keeps its event log, the source of truth for tasks, replay, forks and the dashboard history.
 
-    "storage": {"backend": "jsonl"}                                   # the only backend: logs/events.jsonl
+    "storage": {"backend": "jsonl"}                                   # default: logs/events.jsonl
     "storage": {"backend": "jsonl", "path": "events.jsonl"}           # optional file name (relative to logs/)
+    "storage": {"backend": "sqlite"}                                  # pip install xqo-sqlite
+    "storage": {"backend": "postgres", "dsn_env": "XQO_PG_DSN"}       # pip install xqo-postgres
 
-xqo-lite stores events in a JSONL file only. "sqlite" and "postgres" (in full xqo) are not included, and asking for
-them stops startup with the reason, so a data dir written by another backend is never silently shown as empty.
+The base package has the jsonl store. Other backends come from plugins, which call register_store() from their
+Plugin.register(); keys other than "backend" and "path" are passed to the backend's factory, which checks them.
 XQO_STORAGE overrides "backend". Relative paths are relative to the data dir's logs/ folder.
 
-Storage is core: if the backend can't open, startup stops with the reason.
-Workspaces, attachments and runtime state files (usage.json, ...) stay files.
+Storage is core: if the chosen backend is not installed or can't open, startup stops with the reason (an event
+store is never silently swapped for an empty one).
+Workspaces, attachments and runtime state files (usage.json, ...) stay files in every backend.
 """
 from __future__ import annotations
 
@@ -16,7 +19,7 @@ import json
 import os
 import threading
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Callable, Iterable, Iterator
 
 # the event kinds task records are rebuilt from (bus._ingest); loaded in full at startup, whatever the history cap
 SEED_KINDS = ("task", "direct", "handover", "done", "task_paused", "task_resumed", "task_reopened", "user_message")
@@ -174,28 +177,52 @@ class JsonlStore(EventStore):
 
 
 # ---- choosing a backend ------------------------------------------------------------------------------------
-KEYS = {"backend", "path"}
-NOT_INCLUDED = {"sqlite", "postgres"}  # backends of full xqo that xqo-lite leaves out
+StoreFactory = Callable[[dict, Path], EventStore]  # (storage config, logs dir) -> store
+STORES: dict[str, StoreFactory] = {}
+CORE_KEYS = {"backend", "path"}
 
 
-def _path(cfg: dict, logs: Path, default: str) -> Path:
+def register_store(name: str, factory: StoreFactory) -> StoreFactory:
+    """Add a storage backend (plugins call this from Plugin.register)."""
+    STORES[name] = factory
+    return factory
+
+
+def store_path(cfg: dict, logs: Path, default: str) -> Path:
+    """`cfg["path"]` (or `default`) resolved against the logs dir: for file-based backends."""
     p = Path(str(cfg.get("path") or default)).expanduser()
     return p if p.is_absolute() else logs / p
 
 
+def _jsonl(cfg: dict, logs: Path) -> EventStore:
+    unknown = set(cfg) - CORE_KEYS
+    if unknown:
+        raise ValueError(f"storage: unknown setting(s) {', '.join(sorted(unknown))} for jsonl; "
+                         f"known: {', '.join(sorted(CORE_KEYS))}")
+    return JsonlStore(store_path(cfg, logs, "events.jsonl"))
+
+
+register_store("jsonl", _jsonl)
+
+
 def open_store(cfg: dict | None, log_path: str | Path) -> EventStore:
     """The store "storage" in agents.json asks for; `log_path` (.../logs/events.jsonl) sets the logs dir and the
-    default file."""
+    jsonl default file."""
     cfg = dict(cfg or {})
-    unknown = set(cfg) - KEYS
-    if unknown:
-        raise ValueError(f"storage: unknown setting(s) {', '.join(sorted(unknown))}; known: {', '.join(sorted(KEYS))}")
+    if "dsn" in cfg:
+        raise ValueError("storage: put a database DSN in an environment variable and name it with \"dsn_env\"")
     backend = os.getenv("XQO_STORAGE") or cfg.get("backend") or "jsonl"
     log_path = Path(log_path)
-    if backend != "jsonl":
-        why = " is not included in xqo-lite" if backend in NOT_INCLUDED else " is unknown"
-        raise ValueError(f"storage: backend {backend!r}{why}; xqo-lite stores events in jsonl only "
-                         f"(remove \"storage\" from agents.json and unset XQO_STORAGE)")
-    if "path" not in cfg:
+    if backend not in STORES:
+        from .plugins import pip_name
+        pkg = pip_name(backend)
+        hint = f" (pip install {pkg})" if pkg else ""
+        raise ValueError(f"storage: backend {backend!r} is not installed{hint}; available: "
+                         f"{', '.join(sorted(STORES))}")
+    if backend == "jsonl" and "path" not in cfg:
+        unknown = set(cfg) - CORE_KEYS
+        if unknown:
+            raise ValueError(f"storage: unknown setting(s) {', '.join(sorted(unknown))} for jsonl; "
+                             f"known: {', '.join(sorted(CORE_KEYS))}")
         return JsonlStore(log_path)
-    return JsonlStore(_path(cfg, log_path.parent, "events.jsonl"))
+    return STORES[backend](cfg, log_path.parent)

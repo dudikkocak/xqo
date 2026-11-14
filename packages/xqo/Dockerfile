@@ -1,16 +1,18 @@
-# xqo-lite: core + office + Claude Agent SDK. No toolchain or docker-CLI stages (those plugins are not included).
+# xqo: core + office + Claude Agent SDK. Plugin packages are added with PLUGINS (e.g. PLUGINS="xqo-schedules").
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     XQO_DATA=/data XQO_HOST=0.0.0.0 XQO_PORT=8000 \
     XQO_SANDBOX=local
 
-# the Claude Agent SDK (and mcp) are regular dependencies of xqo-lite: agents run as Claude Code sessions
+# the Claude Agent SDK (and mcp) are regular dependencies of xqo: agents run as Claude Code sessions
 # WITH_NODE=1 adds Node.js, so local MCP servers started with npx work inside the container
 ARG WITH_NODE=0
+# PLUGINS: plugin packages to install too, e.g. PLUGINS="xqo-schedules xqo-feeds" (from PyPI)
+ARG PLUGINS=""
 # VERSION labels the image; build it as xqo:<version> (see docs/OPERATIONS.md) so an upgrade can be rolled back
 ARG VERSION=dev
-LABEL org.opencontainers.image.title="xqo-lite" org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.title="xqo" org.opencontainers.image.version="${VERSION}"
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY xqo ./xqo
@@ -20,7 +22,7 @@ COPY --from=astral/uv:0.9.30 /uv /uvx /usr/local/bin/
 RUN apt-get update && apt-get install -y --no-install-recommends git \
       $( [ "$WITH_NODE" = "1" ] && echo nodejs npm ) \
  && rm -rf /var/lib/apt/lists/* \
- && uv pip install --system --no-cache . \
+ && uv pip install --system --no-cache . ${PLUGINS} \
  && useradd --create-home --uid 1000 app && mkdir -p /data /exchange && chown app /data /exchange
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

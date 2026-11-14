@@ -15,9 +15,12 @@ agents.json decides which plugins run:
 Everything else that is available is loaded. A plugin that has nothing to do (e.g. channels without a
 "channels" block) returns None from `configure` and stays "inactive": no hooks, no routes, no cost.
 
-Missing plugins (xqo-lite): a plugin that is not included (plugins.NOT_INCLUDED) or whose module can't be imported
-is "missing". That is always a warning, never an error, also with "strict": true: the rest of the HQ runs, and the
-config keys of a missing plugin are ignored.
+Missing plugins: a known plugin that is not installed (plugins.KNOWN, e.g. `pip install xqo-schedules`) or one
+whose module can't be imported is "missing". That is always a warning, never an error, also with "strict": true:
+the rest of the HQ runs, and the config keys of a missing plugin are ignored.
+
+Plugins import the core only through `xqo.api` (the public API, versioned by API_VERSION); everything else in the
+xqo package is private and may change in any release.
 
 Failure isolation: an error while configuring or starting a plugin marks it "failed" (shown in
 /api/health, /api/plugins and as a startup warning), disables the plugins that require it, and startup goes on.
@@ -57,6 +60,11 @@ class Plugin:
     agent_keys: tuple[str, ...] = ()   # per-agent keys in agents.json that this plugin reads (agent_config)
     config_keys: tuple[str, ...] = ()  # top-level agents.json keys this plugin owns ("channels", …)
     static: tuple[str, Path] | None = None  # (URL prefix, folder) of browser files the dashboard serves
+    # backups (backup.py) and the pre-migration snapshot: folders under artifacts/ that hold this plugin's runtime
+    # settings, file name globs that never go into an archive, files next to agents.json that belong to the config
+    state_dirs: tuple[str, ...] = ()
+    skip_files: tuple[str, ...] = ()
+    config_files: tuple[str, ...] = ()
     nav: dict | None = None            # a link/button the dashboard shows when the plugin is active
     ui: tuple[str, ...] = ()           # browser scripts (in the `static` folder) the dashboard loads when active
 
@@ -172,6 +180,18 @@ class PluginState:
                 "description": self.description, "source": self.source}
 
 
+# ---- what installed plugins add to backups (filled by load_classes, read by backup.py and migrations.py) ----
+STATE_DIRS: set[str] = set()
+SKIP_FILES: set[str] = set()
+CONFIG_FILES: set[str] = set()
+
+
+def _collect(cls: type[Plugin]) -> None:
+    STATE_DIRS.update(cls.state_dirs)
+    SKIP_FILES.update(cls.skip_files)
+    CONFIG_FILES.update(cls.config_files)
+
+
 # ---- discovery ----------------------------------------------------------------------------------------------
 def _load_ref(ref: str) -> type[Plugin]:
     mod, _, attr = ref.partition(":")
@@ -221,6 +241,7 @@ def load_classes(disabled: set[str] | frozenset[str] = frozenset(),
             if cls.api != API_VERSION:
                 raise RuntimeError(f"needs plugin API {cls.api}, this xqo has {API_VERSION}")
             cls.register()
+            _collect(cls)
             out[name] = cls
         except Exception as e:
             if errors is not None:
@@ -264,27 +285,27 @@ class PluginManager:
             raise ValueError('plugins.disable must be a list of plugin names')
         self.disabled = set(disabled)
         self.cfg = cfg
-        from .plugins import NOT_INCLUDED
+        from .plugins import KNOWN
         names = available()
-        not_included = {n: keys for n, keys in NOT_INCLUDED.items() if n not in names}
-        bad = self.disabled - set(names) - set(not_included)
+        not_installed = {n: v for n, v in KNOWN.items() if n not in names}
+        bad = self.disabled - set(names) - set(not_installed)
         self.warnings: list[str] = [f"plugins.disable: no plugin named {n!r}" for n in sorted(bad)]
         self.states: dict[str, PluginState] = {}
         for n in names:
             self.states[n] = PluginState(n, "disabled" if n in self.disabled else "loaded", source=
                                          "builtin" if names[n].startswith("xqo.plugins.") else names[n])
-        for n, keys in not_included.items():  # left out of xqo-lite: listed, never loaded
-            self.states[n] = PluginState(n, "missing", "not included in xqo-lite", source="not included")
+        for n, (pkg, keys) in not_installed.items():  # known, published separately: listed, never loaded
+            self.states[n] = PluginState(n, "missing", f"not installed (pip install {pkg})", source=pkg)
             used = [k for k in keys if k in cfg]
             if used and n not in self.disabled:
-                self._missing(n, f"is not included in xqo-lite; {', '.join(repr(k) for k in used)} in agents.json "
-                                 f"is ignored")
+                self._missing(n, f"is not installed (pip install {pkg}); {', '.join(repr(k) for k in used)} "
+                                 f"in agents.json is ignored")
         errors: dict[str, str] = {}
         missing: dict[str, str] = {}
         classes = load_classes(self.disabled, errors, missing)
         for n, why in missing.items():
             self.states[n].state, self.states[n].error = "missing", why
-            self._missing(n, f"is missing ({why}); it is off")
+            self._missing(n, f"is missing ({why}); it is off")  # an entry point whose package is broken or gone
         for n, err in errors.items():
             self._fail(n, f"could not be loaded: {err}")
         self.plugins: dict[str, Plugin] = {}
@@ -315,7 +336,9 @@ class PluginManager:
                     if r not in self.states or self.states[r].state == "missing":  # a warning, never an error
                         self.states[n].state, self.states[n].error = "missing", f"requires the {r} plugin"
                         if any(k in self.cfg for k in classes[n].config_keys):
-                            self._missing(n, f"requires the {r} plugin, which is missing; it is off")
+                            from .plugins import pip_name
+                            hint = f" (pip install {pip_name(r)})" if pip_name(r) else ""
+                            self._missing(n, f"requires the {r} plugin, which is missing{hint}; it is off")
                         return False
                     why = ("is disabled" if r in self.disabled else "is not installed" if r not in self.states
                            else "failed")

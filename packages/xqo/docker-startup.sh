@@ -3,7 +3,7 @@
 #   ./docker-startup.sh [start|stop|restart|logs|status|auth|token|mock] [--node] [--port N] [--no-build]
 #   start (default): build the image, start in the background, wait until healthy
 #   --node:          Node.js in the image (local MCP servers started with npx)
-#   (xqo-lite always includes the Claude Agent SDK; --sdk is accepted and does nothing)
+#   (xqo always includes the Claude Agent SDK; --sdk is accepted and does nothing)
 #   auth:            check the Claude Agent SDK sign-in in the running container (one tiny model call)
 #   token:           copy the Claude Code login (~/.claude) into .env as CLAUDE_CODE_OAUTH_TOKEN (short-lived)
 #   mock:            run in the foreground with the offline scripted LLM (no API key needed)
@@ -15,9 +15,9 @@ export WITH_NODE="${WITH_NODE:-0}" XQO_HOST_PORT="${XQO_HOST_PORT:-8000}"
 while [ $# -gt 0 ]; do
   case "$1" in
     start|stop|restart|logs|status|auth|token|mock) cmd=$1 ;;
-    --sdk) ;;  # always included in xqo-lite
+    --sdk) ;;  # always included in xqo
     --node) WITH_NODE=1 ;;
-    --toolchains|--docker-sandbox) echo "$1: not included in xqo-lite (use full xqo)" >&2; exit 2 ;;
+    --toolchains|--docker-sandbox) echo "$1: needs a plugin package that is not published yet (xqo-toolchains / xqo-docker)" >&2; exit 2 ;;
     --port) XQO_HOST_PORT="$2"; shift ;;
     --no-build) build=0 ;;
     -h|--help) sed -n '2,10p' "$0"; exit 0 ;;

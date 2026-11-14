@@ -26,8 +26,8 @@ def test_builtins_office_active_and_the_rest_missing(tmp_path):
     bus = make(tmp_path)
     st = bus.plugins.health()
     assert st["office"] == "active" and bus.office
-    for n in ("schedules", "channels", "feeds", "peering", "toolchains", "docker", "agency", "postgres"):
-        assert st[n].startswith("missing"), (n, st[n])
+    for n in ("schedules", "channels", "feeds", "peering", "toolchains", "docker", "agency", "postgres", "sqlite"):
+        assert st[n] == f"missing: not installed (pip install xqo-{n})", (n, st[n])
     assert not any("plugin" in w for w in bus.config_warnings)  # not configured: missing, but nothing to say
 
 
@@ -54,8 +54,8 @@ def test_config_of_a_missing_plugin_is_a_warning_not_an_error(tmp_path, monkeypa
     bus = make(tmp_path, schedules=[{"id": "s1", "every": "1h", "prompt": "x"}],
                channels={"tg": {"type": "telegram"}}, plugins={"strict": strict})
     assert bus.agents and bus.office  # the HQ runs
-    assert any("plugin schedules is not included in xqo-lite; 'schedules'" in w for w in bus.config_warnings)
-    assert any("plugin channels is not included" in w for w in bus.config_warnings)
+    assert any("plugin schedules is not installed (pip install xqo-schedules); 'schedules'" in w for w in bus.config_warnings)
+    assert any("plugin channels is not installed (pip install xqo-channels)" in w for w in bus.config_warnings)
     with TestClient(create_app(bus)) as c:
         assert c.get("/api/health").json()["plugins"]["schedules"].startswith("missing")
         assert c.get("/api/schedules").status_code == 404
@@ -93,7 +93,7 @@ def test_a_requirement_that_is_missing_is_a_warning(tmp_path, monkeypatch, stric
     monkeypatch.delenv("XQO_STRICT", raising=False)
     bus = make(tmp_path, needy={}, plugins={"strict": strict})
     assert bus.plugins.states["needy"].state == "missing"
-    assert any("plugin needy requires the schedules plugin, which is missing" in w for w in bus.config_warnings)
+    assert any("plugin needy requires the schedules plugin, which is missing (pip install xqo-schedules)" in w for w in bus.config_warnings)
 
 
 def test_office_views_2d_only(tmp_path):
@@ -231,7 +231,7 @@ def test_browser_2d_only_office_and_hidden_plugin_ui(tmp_path):
         pg.goto(srv.url + "/")
         pg.wait_for_selector("#officelink")  # the office plugin's nav link
         pg.wait_for_function("document.getElementById('dot').classList.contains('on')")
-        assert pg.query_selector("#tsched") is None  # schedules is not included: no button
+        assert pg.query_selector("#tsched") is None  # schedules is not installed: no button
         b.close()
     assert not errors, errors
 

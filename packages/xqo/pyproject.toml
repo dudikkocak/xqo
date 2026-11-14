@@ -1,13 +1,20 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "xqo-lite"
+name = "xqo"
 dynamic = ["version"]
-description = "xqo-lite: the xqo core with the 2D / 3D office and the Claude Agent SDK; events in jsonl"
+description = "xqo: a small, plugin-based HQ of Claude agents with a live dashboard and a 2D / 3D office"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "dudikkocak"}]
+keywords = ["claude", "agents", "llm", "orchestration", "dashboard"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
 dependencies = [
   "anthropic>=2.2.0",
   "fastapi>=0.110",
@@ -17,7 +24,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Plugin bundles are added here as each plugin package is published (all = every xqo-* plugin).
 dev = ["pytest>=8", "pytest-timeout>=2.3", "httpx>=0.27"]
+
+[project.urls]
+Homepage = "https://github.com/dudikkocak/xqo"
+Issues = "https://github.com/dudikkocak/xqo/issues"
 
 [project.scripts]
 xqo = "xqo.__main__:main"

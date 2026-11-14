@@ -45,10 +45,10 @@ def test_backup_scopes_skip_secrets_and_restore(tmp_path):
     src = instance(tmp_path / "src")
     b = bus_at(src)
     t = asyncio.run(b.submit("Build fib"))
-    ch = Path(b.artifacts.root) / "channels"
+    ch = Path(b.artifacts.root) / "office-assets"
     ch.mkdir()
     (ch / "state.json").write_text("{}")
-    (ch / "gmail.tokens.json").write_text('{"refresh": "secret"}')
+    (ch / "signin.tokens.json").write_text('{"refresh": "secret"}')
     (Path(b.artifacts.root) / t.id / ".venv").mkdir()
     (Path(b.artifacts.root) / t.id / ".venv" / "x").write_text("x")
     (Path(b.artifacts.root) / "schedules.json.tmp").write_text("{}")
@@ -56,12 +56,12 @@ def test_backup_scopes_skip_secrets_and_restore(tmp_path):
     full = backup.create(b, "full", data_dir=src)
     names = set(tarfile.open(full["path"]).getnames())
     assert {"MANIFEST.json", "config/agents.json", "config/departments/engineering.json",
-            "config/skills/notes/SKILL.md", "data/artifacts/channels/state.json", "data/logs/events.jsonl"} <= names
+            "config/skills/notes/SKILL.md", "data/artifacts/office-assets/state.json", "data/logs/events.jsonl"} <= names
     assert f"data/artifacts/{t.id}/workspace/src/fib.py" in names
     assert not any("tokens" in n or ".venv" in n or n.endswith(".tmp") or "/backups/" in n for n in names)
 
     state = set(tarfile.open(backup.create(b, "state", data_dir=src)["path"]).getnames())
-    assert "data/artifacts/channels/state.json" in state and not any(t.id in n for n in state)
+    assert "data/artifacts/office-assets/state.json" in state and not any(t.id in n for n in state)
     cfg_only = set(tarfile.open(backup.create(b, "config", data_dir=src)["path"]).getnames())
     assert not any(n.startswith("data/") for n in cfg_only)
 

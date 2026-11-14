@@ -2,7 +2,7 @@
 
 artifacts/DATA_VERSION holds the layout version the data was last written with. At start-up (config.build)
 pending migrations run in order; each is idempotent. Before the first real migration, the runtime settings
-(top-level files, channels/, feeds/, office-assets/; no task data) are saved to
+(top-level files and the plugins' state folders such as office-assets/; no task data) are saved to
 <data>/backups/pre-migrate-v<from>-v<to>-<UTC>.tar.gz. A data dir written by a newer version stops start-up:
 run that version again, or restore a backup made before the upgrade.
 
@@ -17,7 +17,6 @@ from typing import Callable
 
 DATA_VERSION = 1
 MARKER = "DATA_VERSION"
-STATE_DIRS = ("channels", "feeds", "office-assets")
 
 
 def _baseline(root: Path) -> None:
@@ -66,12 +65,18 @@ def snapshot(root: Path, frm: int, to: int) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     target = out / f"pre-migrate-v{frm}-v{to}-{stamp}.tar.gz"
+    from .backup import skip_files, state_dirs  # the plugins' state folders and skip globs, like a backup
+    from fnmatch import fnmatch
+    dirs, globs = state_dirs(), skip_files()
+
+    def _skip(name: str) -> bool:
+        return any(fnmatch(name, g) for g in globs)
+
     with tarfile.open(target, "w:gz") as tar:
         for p in sorted(Path(root).iterdir()):
-            if (p.is_file() and not p.name.endswith((".tmp", ".tokens.json")) and p.name != "scheduler.lock") \
-                    or (p.is_dir() and p.name in STATE_DIRS):
+            if (p.is_file() and not _skip(p.name)) or (p.is_dir() and p.name in dirs):
                 tar.add(p, arcname=f"artifacts/{p.name}",
-                        filter=lambda t: None if t.name.endswith((".tmp", ".tokens.json")) else t)
+                        filter=lambda t: None if _skip(Path(t.name).name) else t)
     return target
 
 

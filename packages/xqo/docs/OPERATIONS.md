@@ -1,6 +1,7 @@
-> **xqo-lite.** This build has only the core, the office plugin and the Claude Agent SDK, and stores events in
-> jsonl. Parts about schedules, channels, feeds, peering, toolchains, the Docker sandbox, agency, sqlite or
-> postgres don't apply here (see ../README.md). Missing plugins are startup warnings, not errors.
+> **xqo 3.0.** The `xqo` package has the core, the office plugin and the Claude Agent SDK, and stores events in
+> jsonl. Schedules, channels, feeds, peering, toolchains, the Docker sandbox, agency, sqlite and postgres are
+> separate plugin packages (`pip install xqo-<name>`, or `xqo[all]`); parts about them apply once they are
+> installed. A plugin that is not installed is a startup warning, not an error.
 
 # Operations: skills, tools and MCP per agent · backups · upgrades
 
@@ -82,12 +83,12 @@ Releases are versions (`xqo --version`, `/api/health`), built as Docker images t
 | Step | Docker | Native (venv) |
 |---|---|---|
 | 1. Back up | `docker compose exec xqo xqo backup` | `xqo backup` |
-| 2. Get the new version | unpack the new zip; `XQO_VERSION=1.2.0 docker compose build` | unpack into `/opt/xqo/releases/1.2.0`, `uv venv && uv pip install ".[mcp,sdk]"` |
-| 3. Check it with the new code | `XQO_VERSION=1.2.0 docker compose run --rm xqo xqo check --mcp` | `/opt/xqo/releases/1.2.0/.venv/bin/xqo --config ... --data-dir ... check --mcp` |
+| 2. Get the new version | unpack the new zip; `XQO_VERSION=3.0.1 docker compose build` | unpack into `/opt/xqo/releases/3.0.1`, `uv venv && uv pip install "xqo==3.0.1"` |
+| 3. Check it with the new code | `XQO_VERSION=3.0.1 docker compose run --rm xqo xqo check --mcp` | `/opt/xqo/releases/3.0.1/.venv/bin/xqo --config ... --data-dir ... check --mcp` |
 | 4. Drain | `docker compose exec xqo xqo drain` | `xqo drain` |
-| 5. Switch | `XQO_VERSION=1.2.0 docker compose up -d` | `ln -sfn releases/1.2.0 /opt/xqo/current && systemctl restart xqo` |
+| 5. Switch | `XQO_VERSION=3.0.1 docker compose up -d` | `ln -sfn releases/3.0.1 /opt/xqo/current && systemctl restart xqo` |
 | 6. Verify | `curl -s localhost:8000/api/health` | same |
-| Roll back | `XQO_VERSION=1.1.4 docker compose up -d` | point `current` back, restart |
+| Roll back | `XQO_VERSION=3.0.0 docker compose up -d` | point `current` back, restart |
 
 - `check` loads the configuration with the new code without starting anything or touching the data. It reports errors, warnings, unset `*_env` variables, MCP servers that don't start (`--mcp`), and the migrations the new version will run.
 - `drain` stops new tasks (API answers 503), schedules (they catch up after the restart), feed tasks, channel polling (webhooks get 503, so the platforms retry) and incoming peer messages (exchange envelopes wait in the inbox, the peer listener answers 503 so senders queue and retry), then waits for running tasks (`--timeout`, default 600 s). `--stop` then stops the server. `drain --off` cancels it. A task still running at the restart comes back as *interrupted* and can be resumed.

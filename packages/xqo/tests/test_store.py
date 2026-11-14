@@ -1,10 +1,11 @@
-"""The event store: jsonl is the only backend in xqo-lite; sqlite / postgres stop startup with a clear reason."""
+"""The event store: jsonl in the base package; other backends come from plugins through register_store."""
 import json
 
 import pytest
 
 from xqo.config import build
-from xqo.store import JsonlStore, open_store
+from xqo import store as store_mod
+from xqo.store import JsonlStore, open_store, register_store
 
 
 def ev(kind, task, root=None, **meta):
@@ -60,22 +61,40 @@ def test_custom_path_and_backup_file(tmp_path):
     assert s.backup_files(tmp_path / "scratch") == {"other.jsonl": s.path}
 
 
-@pytest.mark.parametrize("backend", ["sqlite", "postgres"])
-def test_other_backends_are_not_included(tmp_path, backend):
-    with pytest.raises(ValueError, match=f"{backend!r} is not included in xqo-lite"):
+@pytest.mark.parametrize("backend,pkg", [("sqlite", "xqo-sqlite"), ("postgres", "xqo-postgres")])
+def test_plugin_backends_not_installed_stop_startup_with_the_pip_name(tmp_path, backend, pkg):
+    with pytest.raises(ValueError, match=f"{backend!r} is not installed \\(pip install {pkg}\\)"):
         open_store({"backend": backend}, tmp_path / "events.jsonl")
-    with pytest.raises(ValueError, match="jsonl only"):
+    with pytest.raises(ValueError, match="not installed"):
         build(_cfg(tmp_path, {"backend": backend}), tmp_path / "a", str(tmp_path / "l" / "e.jsonl"), mock=True)
 
 
 def test_bad_storage_config_stops_startup(tmp_path):
-    with pytest.raises(ValueError, match="'mongo' is unknown"):
+    with pytest.raises(ValueError, match="'mongo' is not installed; available: jsonl"):
         open_store({"backend": "mongo"}, tmp_path / "events.jsonl")
     with pytest.raises(ValueError, match="unknown setting"):
         open_store({"backend": "jsonl", "dsn_env": "X"}, tmp_path / "events.jsonl")
+    with pytest.raises(ValueError, match="dsn_env"):
+        open_store({"backend": "jsonl", "dsn": "postgresql://x"}, tmp_path / "events.jsonl")
 
 
-def test_env_override_to_sqlite_is_refused(tmp_path, monkeypatch):
+def test_env_override_to_a_missing_backend_is_refused(tmp_path, monkeypatch):
     monkeypatch.setenv("XQO_STORAGE", "sqlite")
-    with pytest.raises(ValueError, match="not included"):
+    with pytest.raises(ValueError, match="pip install xqo-sqlite"):
         open_store({"backend": "jsonl"}, tmp_path / "events.jsonl")
+
+
+def test_a_plugin_registers_a_backend(tmp_path, monkeypatch):
+    class MemStore(JsonlStore):
+        backend = "mem"
+    seen = {}
+
+    def factory(cfg, logs):
+        seen.update(cfg=cfg, logs=logs)
+        return MemStore(logs / "mem.jsonl")
+    monkeypatch.setitem(store_mod.STORES, "mem", None)  # restored after the test
+    register_store("mem", factory)
+    s = open_store({"backend": "mem", "table": "t"}, tmp_path / "logs" / "events.jsonl")
+    assert s.backend == "mem" and seen["cfg"]["table"] == "t" and seen["logs"] == tmp_path / "logs"
+    monkeypatch.setenv("XQO_STORAGE", "mem")
+    assert open_store(None, tmp_path / "logs" / "events.jsonl").backend == "mem"

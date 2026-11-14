@@ -526,7 +526,6 @@ def create_app(bus: MessageBus) -> FastAPI:
                                            for s in getattr(bus, "mcp_remote", [])],
                 "skills": bus.skills.describe() if getattr(bus, "skills", None) else [],
                 "providers": getattr(bus, "providers", {}),
-                "peering": bus.peers.status() if bus.peers else None,
                 "plugins": plugins.describe() if plugins else [],
                 "storage": bus.store.describe(),
                 "limits": bus.limits.config or None,
@@ -652,7 +651,6 @@ def create_app(bus: MessageBus) -> FastAPI:
                 "code_data_version": DATA_VERSION, "migrations_applied": getattr(bus, "migrations_applied", []),
                 "draining": bus.draining, "backup_running": bus.quiesced > 0,
                 "running_tasks": [{"id": t.id, "name": t.name, "status": t.status} for t in running],
-                "scheduler": bool(bus.scheduler and bus.scheduler.running),
                 "plugins": plugins.health() if plugins else {},
                 "mcp_errors": {k: v for k, v in bus.mcp.errors.items()},
                 "warnings": list(getattr(bus, "config_warnings", []))}

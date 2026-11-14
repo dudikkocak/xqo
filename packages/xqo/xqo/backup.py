@@ -5,15 +5,17 @@
 
 An archive (xqo-backup-<UTC>-<scope>.tar.gz) holds:
     MANIFEST.json      format, scope, code and data versions, running tasks, sha256 + size per file
-    config/...         agents.json, departments/, agency files, skills/, avatars it references
-    data/artifacts/... runtime settings (schedules, office, usage, archive, channel, feed and peering state) and, for
-                       scope "full", every task's workspace, history, attachments and notes
+    config/...         agents.json, departments/, skills/, avatars it references, and files plugins name
+                       (Plugin.config_files)
+    data/artifacts/... runtime settings (top-level files such as usage and archive, plus the folders installed
+                       plugins name in Plugin.state_dirs, e.g. office-assets/) and, for scope "full", every task's
+                       workspace, history, attachments and notes
     data/logs/...      the event log (scope "full")
 
-Never included: channel sign-in tokens (artifacts/channels/*.tokens.json: sign in again after a restore),
-secrets (they live in environment variables), virtual environments, run copies, *.tmp, scheduler.lock and the
-backups folder itself. Through a running server the scheduler, feeds and channel polling pause while the
-archive is written (seconds); tasks that are running keep running and are listed in the manifest.
+Never included: *.tmp, *.tokens.json and the globs plugins name in Plugin.skip_files (lock files, sign-in tokens),
+secrets (they live in environment variables), virtual environments, run copies and the backups folder itself.
+Through a running server, background work that checks `bus.on_hold()` waits while the archive is written (seconds);
+tasks that are running keep running and are listed in the manifest.
 """
 from __future__ import annotations
 
@@ -34,14 +36,30 @@ from .migrations import DATA_VERSION, read_data_version
 FORMAT = 1
 SCOPES = ("full", "state", "config")
 PREFIX = "xqo-backup-"
-STATE_DIRS = {"channels", "feeds", "office-assets", ".peers"}  # runtime settings kept in folders under artifacts/
+# Folders under artifacts/ with runtime settings, globs that never go into an archive, and files next to
+# agents.json that are part of the config come from the installed plugins (Plugin.state_dirs / skip_files /
+# config_files, collected in xqo.plugin); the core adds only its own.
 SKIP_DIRS = {".venv", ".venv-docker", "__pycache__", "backups"}
-SKIP_FILES = ("*.tmp", "scheduler.lock", "*.tokens.json")
-AGENCY_FILES = ("agency.json", "agency.lock.json", "AGENCY_AGENTS_LICENSE")
+CORE_SKIP_FILES = ("*.tmp", "*.tokens.json")
+
+
+def state_dirs() -> set[str]:
+    from .plugin import STATE_DIRS
+    return set(STATE_DIRS)
+
+
+def skip_files() -> tuple[str, ...]:
+    from .plugin import SKIP_FILES
+    return CORE_SKIP_FILES + tuple(sorted(SKIP_FILES))
+
+
+def plugin_config_files() -> tuple[str, ...]:
+    from .plugin import CONFIG_FILES
+    return tuple(sorted(CONFIG_FILES))
 
 
 def _skip(rel: PurePosixPath) -> bool:
-    return any(p in SKIP_DIRS for p in rel.parts[:-1]) or any(fnmatch(rel.name, g) for g in SKIP_FILES)
+    return any(p in SKIP_DIRS for p in rel.parts[:-1]) or any(fnmatch(rel.name, g) for g in skip_files())
 
 
 def _walk(folder: Path, arc: str, out: dict[str, Path], skip_under: set[Path] = frozenset()) -> None:
@@ -72,7 +90,7 @@ def config_files(bus) -> dict[str, Path]:
         return out
     cfg_dir = cfg_path.parent
     out[_config_arc(cfg_path, cfg_dir)] = cfg_path
-    for name in AGENCY_FILES:
+    for name in plugin_config_files():
         if (cfg_dir / name).is_file():
             out[f"config/{name}"] = cfg_dir / name
     folder = ctx.get("folder")
@@ -118,7 +136,7 @@ def data_files(bus, scope: str, data_dir: Path) -> dict[str, Path]:
     for p in sorted(root.iterdir()) if root.is_dir() else []:
         if p.is_file() and not _skip(PurePosixPath(p.name)):
             out[f"data/artifacts/{p.name}"] = p
-        elif p.is_dir() and p.name in STATE_DIRS:
+        elif p.is_dir() and p.name in state_dirs():
             _walk(p, f"data/artifacts/{p.name}", out, skip)
     return out
 

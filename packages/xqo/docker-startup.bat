@@ -3,7 +3,7 @@ rem Build and run xqo in Docker Desktop (Windows). Run from the xqo folder (next
 rem   docker-startup.bat [start^|stop^|restart^|logs^|status^|auth^|token^|mock] [--node] [--port N] [--no-build]
 rem   start (default): build the image, start in the background, wait until healthy, open the dashboard
 rem   --node:          Node.js in the image (local MCP servers started with npx)
-rem   (xqo-lite always includes the Claude Agent SDK; --sdk is accepted and does nothing)
+rem   (xqo always includes the Claude Agent SDK; --sdk is accepted and does nothing)
 rem   auth:            check the Claude Agent SDK sign-in in the running container (one tiny model call)
 rem   token:           copy the Claude Code login (%USERPROFILE%\.claude) into .env as CLAUDE_CODE_OAUTH_TOKEN (short-lived)
 rem   mock:            run in the foreground with the offline scripted LLM (no API key needed)
@@ -27,9 +27,9 @@ if /i "%~1"=="token"   ( set "CMD=token"   & goto next )
 if /i "%~1"=="mock"    ( set "CMD=mock"    & goto next )
 if /i "%~1"=="--sdk"   ( goto next )
 if /i "%~1"=="--node"  ( set "WITH_NODE=1" & goto next )
-if /i "%~1"=="--toolchains" ( echo --toolchains: not included in xqo-lite ^(use full xqo^) & exit /b 2 )
+if /i "%~1"=="--toolchains" ( echo --toolchains: needs the xqo-toolchains plugin package, not published yet & exit /b 2 )
 if /i "%~1"=="--no-build" ( set "BUILD=0" & goto next )
-if /i "%~1"=="--docker-sandbox" ( echo --docker-sandbox: not included in xqo-lite ^(use full xqo^) & exit /b 2 )
+if /i "%~1"=="--docker-sandbox" ( echo --docker-sandbox: needs the xqo-docker plugin package, not published yet & exit /b 2 )
 if /i "%~1"=="--port"  ( set "XQO_HOST_PORT=%~2" & shift & goto next )
 if /i "%~1"=="--help"  ( findstr /b "rem" "%~f0" & exit /b 0 )
 echo unknown argument: %~1

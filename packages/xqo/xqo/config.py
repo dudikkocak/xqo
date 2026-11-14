@@ -199,7 +199,7 @@ def build(config_path: str | Path = "agents.json", artifacts_dir: str = "artifac
     store = ArtifactStore(artifacts_dir)
     applied = migrate(store.root) if run_migrations else []  # migrations.py; stops on data from a newer version
     plugins = PluginManager(None, cfg, strict)  # loads plugins first: they may register sandbox / storage backends
-    bus = MessageBus(log_path, store=open_store(cfg.get("storage"), log_path))  # store.py: jsonl only in xqo-lite
+    bus = MessageBus(log_path, store=open_store(cfg.get("storage"), log_path))  # store.py: jsonl, or a backend a plugin registers
     plugins.bus = bus
     bus.plugins = plugins
     bus.migrations_applied = applied

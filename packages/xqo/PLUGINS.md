@@ -1,30 +1,45 @@
-> **xqo-lite.** This build has only the core, the office plugin and the Claude Agent SDK, and stores events in
-> jsonl. Parts about schedules, channels, feeds, peering, toolchains, the Docker sandbox, agency, sqlite or
-> postgres don't apply here (see README.md). Missing plugins are startup warnings, not errors.
+> **xqo 3.0.** The `xqo` package has the core, the office plugin and the Claude Agent SDK, and stores events in
+> jsonl. Schedules, channels, feeds, peering, toolchains, the Docker sandbox, agency, sqlite and postgres are
+> separate plugin packages (`pip install xqo-<name>`, or `xqo[all]`); parts about them apply once they are
+> installed. A plugin that is not installed is a startup warning, not an error.
 
 # Writing xqo plugins
 
-A plugin is a subclass of `xqo.plugin.Plugin`. Every hook has a do-nothing default, so a plugin implements only
-what it needs. The built-ins in `xqo/plugins/` are the examples: `peering` (tools, routes, CLI, a side listener)
-is the most complete, `docker` (only `register`) and `agency` (only CLI) are the smallest.
+A plugin is a subclass of `xqo.api.Plugin`, shipped as its own pip package. Every hook has a do-nothing default,
+so a plugin implements only what it needs. The built-in office plugin (`xqo/plugins/office/`) and the plugin
+packages in this repository's `packages/` folder are the examples.
+
+**Import only from `xqo.api`.** It is the public API, versioned by `API_VERSION` (1). A plugin whose `api` differs
+from the running xqo's is not loaded (a warning). Everything else in the `xqo` package is private and may change
+in any release.
 
 ## Discovery
 
-- Built-ins: `xqo/plugins/__init__.py` → `BUILTINS = {"name": "module:Class"}`.
+- Built-ins: `xqo/plugins/__init__.py` → `BUILTINS = {"name": "module:Class"}` (only `office`).
 - Installed packages: an entry point in the group `xqo.plugins`:
 
 ```toml
 # pyproject.toml of your package
+[project]
+name = "xqo-jira"
+dependencies = ["xqo>=3.0,<4"]
+
 [project.entry-points."xqo.plugins"]
 jira = "xqo_jira:JiraPlugin"
+
+[tool.setuptools.package-data]
+xqo_jira = ["static/*"]        # browser files must be in the wheel, or the dashboard UI silently disappears
 ```
+
+`KNOWN` in `xqo/plugins/__init__.py` lists the plugins published from this repository with their pip name, so a
+config that uses one that is not installed gets a warning naming the `pip install` command.
 
 Nothing is ever installed from a URL, a chat message or the dashboard.
 
 ## The interface
 
 ```python
-from xqo.plugin import Plugin
+from xqo.api import Plugin
 
 class JiraPlugin(Plugin):
     name = "jira"
@@ -37,6 +52,9 @@ class JiraPlugin(Plugin):
     static = None                      # ("/plugins/jira", Path(...)) to serve browser files
     nav = None                         # {"id", "label", "href", "title"}: a header link (when it has an href)
     ui = ()                            # ("ui.js",): scripts in `static` the dashboard loads while active
+    state_dirs = ("jira",)             # folders under artifacts/ with runtime settings: in every backup
+    skip_files = ("*.jiralock",)       # globs never written to a backup
+    config_files = ("jira.json",)      # files next to agents.json that belong to the config backup
 
     @classmethod
     def register(cls): ...             # at load time, no config: register backends / adapters / sources
@@ -98,19 +116,20 @@ XQO.on(e => { if (e.kind.startsWith("jira_")) toast(e.content, null) });        
 XQO.plugins.jira.status                                                         // its /api/plugins row
 ```
 
-`xqo/plugins/schedules/static/ui.js`, `feeds/static/ui.js` and `peering/static/ui.js` are the examples. An error
+The schedules, feeds and peering packages' `static/ui.js` are the examples. An error
 thrown in an `XQO.on` handler is logged in the browser console and does not stop the other handlers.
 
 ## Smaller extension points
 
-- **Sandbox backend**: subclass `xqo.sandbox.Backend`, decorate with `@register_backend` in your plugin's
-  `register()`, then `"sandbox": {"backend": "<name>"}` (see `xqo/plugins/docker/`).
-- **Channel adapter**: subclass `xqo.plugins.channels.base.Adapter` and declare an entry point in the group
+- **Sandbox backend**: subclass `xqo.api.Backend`, decorate with `@register_backend` in your plugin's
+  `register()`, then `"sandbox": {"backend": "<name>"}` (see the `xqo-docker` package).
+- **Channel adapter** (with `xqo-channels`): subclass its `Adapter` and declare an entry point in the group
   `xqo.channels` (`discord = "pkg:DiscordAdapter"`); use it with `"channels": {"chat": {"type": "discord"}}`. The
   channels hub keeps the access modes and the responder tool filter, so an adapter cannot widen them.
-- **Storage backend**: call `xqo.store.register_store("name", factory)` in your plugin's `register()`, where
-  `factory(cfg, log_path)` returns an `EventStore` (`append`, `recent`, `seeds`, `tree`, `by_kind_prefix`, `purge`,
-  `iter_all`, `count`, `backup_files`, `describe`, `close`). `xqo/plugins/postgres/` is the example, and
-  `tests/test_store.py` is the contract every backend must pass.
-- **Toolchains**: the sandbox calls whatever module was given to `xqo.sandbox.use_toolchains(module)`
-  (`detect`, `prepare`, `copy_ignore`, `describe`, `walk`, `is_python_project`); `xqo/plugins/toolchains/` does that.
+- **Storage backend**: call `xqo.api.register_store("name", factory)` in your plugin's `register()`, where
+  `factory(cfg, logs_dir)` returns an `EventStore` (`append`, `recent`, `seeds`, `tree`, `by_kind_prefix`, `purge`,
+  `iter_all`, `count`, `backup_files`, `describe`, `close`) and checks its own keys in `cfg`; `store_path` resolves
+  a file name against the logs dir. The `xqo-sqlite` and `xqo-postgres` packages are the examples, and the
+  contract test in `tests/test_store.py` is what every backend must pass.
+- **Toolchains**: the sandbox calls whatever module was given to `xqo.api.use_toolchains(module)`
+  (`detect`, `prepare`, `copy_ignore`, `describe`, `walk`, `is_python_project`); the `xqo-toolchains` package does that.

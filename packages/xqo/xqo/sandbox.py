@@ -295,7 +295,7 @@ def backend_class(name: str) -> type[Backend]:
         if not (isinstance(cls, type) and issubclass(cls, Backend)):
             raise ValueError(f"sandbox backend {name!r} is not a sandbox.Backend subclass")
         return cls
-    hint = " (the docker backend is not included in xqo-lite)" if name == "docker" else ""
+    hint = " (pip install xqo-docker)" if name == "docker" else ""
     raise ValueError(f"unknown sandbox backend {name!r}{hint}: use auto, off, {', '.join(BACKENDS)} or 'module:Class'")
 
 

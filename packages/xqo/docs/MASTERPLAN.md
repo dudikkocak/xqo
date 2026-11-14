@@ -1,6 +1,7 @@
-> **xqo-lite.** This build has only the core, the office plugin and the Claude Agent SDK, and stores events in
-> jsonl. Parts about schedules, channels, feeds, peering, toolchains, the Docker sandbox, agency, sqlite or
-> postgres don't apply here (see ../README.md). Missing plugins are startup warnings, not errors.
+> **xqo 3.0.** The `xqo` package has the core, the office plugin and the Claude Agent SDK, and stores events in
+> jsonl. Schedules, channels, feeds, peering, toolchains, the Docker sandbox, agency, sqlite and postgres are
+> separate plugin packages (`pip install xqo-<name>`, or `xqo[all]`); parts about them apply once they are
+> installed. A plugin that is not installed is a startup warning, not an error.
 
 # MASTERPLAN: xqo, Python AI agents HQ
 

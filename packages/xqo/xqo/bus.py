@@ -79,23 +79,20 @@ class MessageBus:
         self._background: set[asyncio.Task] = set()
         self.lifecycle = None  # TaskLifecycle (lifecycle.py): archive and trash, set by config.build
         self.plugins = None  # PluginManager (plugin.py), set by config.build
-        # services of active plugins (None when the plugin is off): set by the plugin manager
-        self.scheduler = None  # schedules plugin
-        self.peers = None  # peering plugin
-        self.channels = None  # channels plugin
-        self.feeds = None  # feeds plugin
-        self.office = None  # office plugin (OfficeConfig)
+        # services of active plugins: the plugin manager sets bus.<Plugin.service> (None when the plugin is off).
+        # Other plugins and the core look them up with PluginContext.get / bus.plugins.service(name).
+        self.office = None  # office plugin (OfficeConfig), built in
         self.chat = Chat(self)
         self.limits = Limits()  # system-wide "no limits" hour (limits.py); build() persists it
         self.usage_total = None  # UsageTotals (usage.py), set by config.build: the office header's overall total
         self.office_edit = False  # office layout editing: only with `serve --edit` (office plugin)
         self.hq_name = ""  # "name" in agents.json: shown in the dashboard and office headers
-        self.draining = False  # before an upgrade: no new tasks, schedules, feed tasks or channel polls
-        self.quiesced = 0  # while a backup is written: scheduler, feeds and channel polling wait
+        self.draining = False  # before an upgrade: no new tasks, and plugins' background work waits (on_hold)
+        self.quiesced = 0  # while a backup is written: plugins' background work waits (on_hold)
         self._restore()
 
     def on_hold(self) -> bool:
-        """Whether background starters (scheduler, feeds, channel polling) should wait."""
+        """Whether background starters (plugins' schedules, feeds, polling, ...) should wait."""
         return self.draining or self.quiesced > 0
 
     def running_roots(self) -> list[Task]:

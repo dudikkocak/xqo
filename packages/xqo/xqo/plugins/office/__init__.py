@@ -26,6 +26,7 @@ class OfficePlugin(Plugin):
     description = "The /office page: 2D / 3D office view, editor, planners world"
     service = "office"
     config_keys = ("office",)
+    state_dirs = ("office-assets",)   # uploaded office assets: part of every backup
     static = ("/plugins/office", STATIC)
     nav = {"id": "officelink", "label": "🏢 office", "href": "/office",
            "title": "The HQ as an office: desks and agents at work; click an agent to talk to it"}

@@ -33,7 +33,7 @@ Without the scripts: `docker compose up -d --build`.
 
 ## Notes
 
-- The Claude Agent SDK is always in the xqo-lite image (`--sdk` is accepted and does nothing; `--toolchains` and
+- The Claude Agent SDK is always in the xqo image (`--sdk` is accepted and does nothing; `--toolchains` and
   `--docker-sandbox` are not included and stop the script). `--node` changes the image and needs a build, so leave out
   `--no-build` the first time you add one.
 - Linux: `chmod +x docker-startup.sh` once if it is not executable.

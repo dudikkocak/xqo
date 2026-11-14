@@ -113,7 +113,7 @@ class MCPHub:
             from mcp import ClientSession
             from mcp.client.stdio import StdioServerParameters, stdio_client
         except ImportError:
-            self.errors[s["name"]] = "the 'mcp' package is not installed (it comes with claude-agent-sdk: reinstall xqo-lite)"
+            self.errors[s["name"]] = "the 'mcp' package is not installed (it comes with claude-agent-sdk: reinstall xqo)"
             conn.ready.set()
             return
         try:

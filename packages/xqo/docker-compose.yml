@@ -1,12 +1,13 @@
 services:
   xqo:
     # Pin the version you run; an upgrade builds the next tag, a rollback goes back to this one (OPERATIONS.md)
-    image: xqo-lite:${XQO_VERSION:-1.2.0}
+    image: xqo:${XQO_VERSION:-3.0.0}
     build:
       context: .
       args:
-        VERSION: ${XQO_VERSION:-1.2.0}
+        VERSION: ${XQO_VERSION:-3.0.0}
         WITH_NODE: ${WITH_NODE:-0}
+        PLUGINS: ${XQO_PLUGINS:-}       # plugin packages to install, e.g. "xqo-schedules xqo-feeds"
     restart: unless-stopped
     # XQO_HOST_PORT picks the port on this machine; keep 127.0.0.1, the dashboard has no login
     ports: ["127.0.0.1:${XQO_HOST_PORT:-8000}:8000"]

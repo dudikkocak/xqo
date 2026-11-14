@@ -1,6 +1,7 @@
-> **xqo-lite.** This build has only the core, the office plugin and the Claude Agent SDK, and stores events in
-> jsonl. Parts about schedules, channels, feeds, peering, toolchains, the Docker sandbox, agency, sqlite or
-> postgres don't apply here (see ../README.md). Missing plugins are startup warnings, not errors.
+> **xqo 3.0.** The `xqo` package has the core, the office plugin and the Claude Agent SDK, and stores events in
+> jsonl. Schedules, channels, feeds, peering, toolchains, the Docker sandbox, agency, sqlite and postgres are
+> separate plugin packages (`pip install xqo-<name>`, or `xqo[all]`); parts about them apply once they are
+> installed. A plugin that is not installed is a startup warning, not an error.
 
 # SETUP: running one or many HQs
 
@@ -103,7 +104,7 @@ xqo serve           # http://127.0.0.1:8000
 ```
 With Docker: `docker compose up --build` (repository root; data in `./data`).
 
-**Claude Agent SDK backend**: always installed in xqo-lite (`uv pip install .`; Docker: `docker compose up --build`) and every agent runs as a Claude Code session by default; sign in with `ANTHROPIC_API_KEY` or the local `claude` login. Each instance is a separate process with its own sessions, so the same applies per instance in B–E. Peering is the same with either backend: `list_peers` and `send_to_peer` reach Claude Code through the in-process `xqo` MCP server, and files that Claude Code writes with Write / Edit can be sent like any workspace file.
+**Claude Agent SDK backend**: always installed with xqo (`pip install xqo`; Docker: `docker compose up --build`) and every agent runs as a Claude Code session by default; sign in with `ANTHROPIC_API_KEY` or the local `claude` login. Each instance is a separate process with its own sessions, so the same applies per instance in B–E. Peering is the same with either backend: `list_peers` and `send_to_peer` reach Claude Code through the in-process `xqo` MCP server, and files that Claude Code writes with Write / Edit can be sent like any workspace file.
 
 ---
 

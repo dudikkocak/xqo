@@ -34,7 +34,7 @@ Department budgets, the *No limits* hour, the trash, the archive, the schedules 
 
 Messaging channels (`"channels"` in the config, see [CHANNELS.md](CHANNELS.md)) are per instance as well: give each instance its own bot, number or account. Two instances polling the same Telegram bot, X account, mailbox or Twilio number would take each other's messages, and their conversation state lives in each data dir (`artifacts/channels/`).
 
-Local feeds (`"feeds"`, see [FEEDS.md](FEEDS.md)) are watched by the instance that runs the scheduler of its data dir. Instances on one machine each see the same CPU, disks and logs, so give the system-wide rules to one of them; push feeds and `feeds.listen` ports need different names or ports per instance.
+Local feeds (`"feeds"`, see [xqo-feeds](https://github.com/dudikkocak/xqo/tree/main/packages/xqo-feeds)) are watched by the instance that runs the scheduler of its data dir. Instances on one machine each see the same CPU, disks and logs, so give the system-wide rules to one of them; push feeds and `feeds.listen` ports need different names or ports per instance.
 
 Schedules run only in the instance that owns them, so nothing fires twice across instances; the `serve` process takes `artifacts/scheduler.lock`, and a second process pointed at the same data dir by mistake does not run them (see README → Scheduled and repeating tasks).
 

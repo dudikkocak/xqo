@@ -4,7 +4,12 @@
 
 - New plugin packages **`xqo-toolchains`** (Node, Go, Rust and .NET for `run_code`) and **`xqo-agency`** (the
   `xqo agency` importer, whose files `xqo backup` keeps through `Plugin.config_files`).
-- New extras `xqo[toolchains]` and `xqo[agency]`; `xqo[all]` includes them.
+- New plugin packages **`xqo-schedules`** (cron / every / at tasks, the ⏱ panel and `xqo schedule`) and
+  **`xqo-feeds`** (local feeds and rules, `xqo feed`; it depends on `xqo-schedules`). Without schedules, feeds
+  shows as `missing`. Feeds find the scheduler through `ctx.get("schedules")`; `bus.scheduler` and `bus.feeds`
+  are still set while the plugins are active. Backups skip `scheduler.lock` and keep `artifacts/feeds/`.
+- New extras `xqo[toolchains]`, `xqo[agency]`, `xqo[schedules]`, `xqo[feeds]` and `xqo[automation]` (schedules and
+  feeds); `xqo[all]` includes them.
 
 ## 3.0.0 (2026-11-14)
 

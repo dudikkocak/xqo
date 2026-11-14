@@ -59,3 +59,49 @@ def check_restart_keeps_tasks(tmp_path: Path, storage: dict, history_limit: int 
         return again
     finally:
         busmod.HISTORY_LIMIT = old
+
+
+# ---- a live server for browser tests (playwright) ---------------------------------------------------------------
+class LiveServer:
+    """Serve an app on a free local port in a thread: `with LiveServer(create_app(bus)) as srv: page.goto(srv.url)`."""
+
+    def __init__(self, app):
+        import socket
+        import threading
+
+        import uvicorn
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            self.port = s.getsockname()[1]
+        self.server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=self.port, log_level="error"))
+        self.thread = threading.Thread(target=self.server.run, daemon=True)
+
+    def __enter__(self):
+        import time
+        self.thread.start()
+        for _ in range(200):
+            if self.server.started:
+                break
+            time.sleep(0.05)
+        return self
+
+    def __exit__(self, *exc):
+        self.server.should_exit = True
+        self.thread.join(5)
+
+    @property
+    def url(self) -> str:
+        return f"http://127.0.0.1:{self.port}"
+
+
+def launch_chromium(playwright):
+    """A headless Chromium from playwright, or pytest.skip when none can start."""
+    import glob
+
+    import pytest
+    for exe in (None, "/opt/pw-browsers/chromium", *sorted(glob.glob("/opt/pw-browsers/chromium-*/chrome-linux*/chrome"))):
+        try:
+            return playwright.chromium.launch(executable_path=exe)
+        except Exception:
+            continue
+    pytest.skip("no chromium available for playwright")

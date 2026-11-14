@@ -7,7 +7,7 @@ import importlib
 
 from xqo.api import Plugin, docker_available
 
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 
 
 class DockerPlugin(Plugin):

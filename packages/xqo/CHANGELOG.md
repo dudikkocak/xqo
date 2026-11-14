@@ -1,6 +1,12 @@
 # Changelog
 
-## 3.0.0 (unreleased)
+## 3.1.0 (unreleased)
+
+- New plugin packages **`xqo-toolchains`** (Node, Go, Rust and .NET for `run_code`) and **`xqo-agency`** (the
+  `xqo agency` importer, whose files `xqo backup` keeps through `Plugin.config_files`).
+- New extras `xqo[toolchains]` and `xqo[agency]`; `xqo[all]` includes them.
+
+## 3.0.0 (2026-11-14)
 
 First release of xqo as a base package plus plugin packages, from one monorepo. The `xqo` package holds the core,
 the office plugin (2D and 3D) and the Claude Agent SDK, and stores events in jsonl.

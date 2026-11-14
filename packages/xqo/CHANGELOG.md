@@ -8,8 +8,12 @@
   **`xqo-feeds`** (local feeds and rules, `xqo feed`; it depends on `xqo-schedules`). Without schedules, feeds
   shows as `missing`. Feeds find the scheduler through `ctx.get("schedules")`; `bus.scheduler` and `bus.feeds`
   are still set while the plugins are active. Backups skip `scheduler.lock` and keep `artifacts/feeds/`.
-- New extras `xqo[toolchains]`, `xqo[agency]`, `xqo[schedules]`, `xqo[feeds]` and `xqo[automation]` (schedules and
-  feeds); `xqo[all]` includes them.
+- New plugin packages **`xqo-channels`** (messaging channels, `xqo channels`) and **`xqo-peering`** (other HQs,
+  `xqo peers`, the ⇆ peers panel). Backups keep `artifacts/channels/` and `artifacts/.peers/`. The office reads
+  its HQ name from peering through `bus.plugins.service("peering")`. `xqo.api` adds `max_file_bytes()`.
+- With this release every plugin of xqo 1.2.0 is a package again.
+- New extras `xqo[toolchains]`, `xqo[agency]`, `xqo[schedules]`, `xqo[feeds]`, `xqo[automation]` (schedules and
+  feeds), `xqo[channels]` and `xqo[peering]`; `xqo[all]` includes them.
 
 ## 3.0.0 (2026-11-14)
 

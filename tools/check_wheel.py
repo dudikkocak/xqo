@@ -20,6 +20,7 @@ REQUIRED = {
             "xqo/plugins/office/static/office2d.js"],
     "xqo-schedules": ["xqo_schedules/static/ui.js"],
     "xqo-feeds": ["xqo_feeds/static/ui.js"],
+    "xqo-peering": ["xqo_peering/static/ui.js"],
 }
 
 

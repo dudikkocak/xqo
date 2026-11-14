@@ -15,7 +15,8 @@ released together with the same version (starting at 3.0.0).
 | `xqo-agency` | [packages/xqo-agency](packages/xqo-agency) | `xqo agency`: import agents from the agency-agents library |
 | `xqo-schedules` | [packages/xqo-schedules](packages/xqo-schedules) | scheduled and repeating tasks (cron, every, at) |
 | `xqo-feeds` | [packages/xqo-feeds](packages/xqo-feeds) | local feeds and rules that wake agents (needs `xqo-schedules`) |
-| `xqo-channels`, `xqo-peering` | `packages/xqo-<name>` (coming) | optional plugins |
+| `xqo-channels` | [packages/xqo-channels](packages/xqo-channels) | Telegram, WhatsApp, Instagram, X, Threads, Gmail and SMS |
+| `xqo-peering` | [packages/xqo-peering](packages/xqo-peering) | messages and files between separate HQs |
 
 ```bash
 pip install xqo                  # the base package

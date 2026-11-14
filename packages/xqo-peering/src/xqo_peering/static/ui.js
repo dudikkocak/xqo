@@ -1,0 +1,11 @@
+/* peering plugin UI: the ⇆ peers button and dialog */
+/* peering: other HQs, what each may send / receive, and the recent peer messages */
+async function showPeers(){const [st,log]=await Promise.all([fetch("/api/peers").then(r=>r.json()),fetch("/api/peers/messages?limit=100").then(r=>r.json())]);
+  if(!st.enabled){dialog("Peers","<p>Peering is not configured.</p>","peers");return}
+  const rows=st.peers.map(p=>`<tr><td><b>${esc(p.name)}</b>${p.description?`<div class="tid">${esc(p.description)}</div>`:""}</td><td>${esc(p.transport)}${p.url?`<div class="tid">${esc(p.url)}</div>`:""}</td><td>${esc(p.send.join(", ")||"–")}</td><td>${esc(p.receive.join(", ")||"–")}</td><td>${p.transport==="http"&&!p.token_set?`<span style="color:var(--error)">${esc(p.token_env||"token")} not set</span>`:"ok"}</td></tr>`).join("");
+  const msgs=log.slice().reverse().map(m=>`<tr><td class="tid">${esc((m.ts||"").slice(0,19).replace("T"," "))}</td><td>${m.dir==="out"?"→":"←"} ${esc(m.peer||"?")}</td><td>${esc(m.kind||"")}</td><td>${esc(m.status||"")}</td><td>${esc((m.text||m.detail||"").slice(0,160))}${(m.files||[]).length?` <span class="tid">+${m.files.length} file(s)</span>`:""}${m.task||m.root?` <a href="#" data-ptask="${esc(m.task||m.root)}">task</a>`:""}</td></tr>`).join("");
+  dialog(`Peers · this xqo: ${st.name}`,`<p class="tid">exchange folder: ${esc(st.exchange_dir||"–")} · peer API: ${esc(st.listen||"–")} · max hops ${st.max_hops} · limits: ${st.limits?`${st.limits.max_files} files, ${st.limits.max_file_mb} MB a file, ${st.limits.max_total_mb} MB in all`:"–"} · peer tools for: ${esc(Array.isArray(st.agents)?st.agents.join(", "):st.agents)}${st.queued?` · <b>${st.queued} queued</b>`:""}</p>
+  <table class="ptab"><tr><th>peer</th><th>transport</th><th>send</th><th>receive</th><th>token</th></tr>${rows}</table>
+  <h4>Recent messages</h4>${msgs?`<table class="ptab">${msgs}</table>`:"<p>No peer messages yet.</p>"}`,"peers");
+  $("dbody").querySelectorAll("[data-ptask]").forEach(a=>a.onclick=ev=>{ev.preventDefault();const t=a.dataset.ptask;$("dlg").style.display="none";selectTask(t,state.names[t]||t)})}
+XQO.button({id:"peersb",label:"⇆ peers",title:"Other HQs this one exchanges messages and files with",onclick:()=>showPeers().catch(err=>alert(err.message))});

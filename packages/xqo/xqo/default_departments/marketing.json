@@ -1,0 +1,32 @@
+{
+  "name": "marketing",
+  "description": "Writes copy, documentation and launch material.",
+  "head": "mkt_lead",
+  "contacts": [
+    "engineering",
+    "research"
+  ],
+  "budget": {
+    "max_tokens": 1000000,
+    "max_cost_usd": 5
+  },
+  "agents": [
+    {
+      "name": "mkt_lead",
+      "skills": [
+        "marketing strategy",
+        "positioning",
+        "campaign planning"
+      ],
+      "system": "You lead the marketing department. Assign writing and campaign work to your members, edit their output for one consistent voice, and report back."
+    },
+    {
+      "name": "writer",
+      "skills": [
+        "documentation",
+        "writing"
+      ],
+      "system": "You are a technical writer. Produce clear READMEs and docs in Markdown."
+    }
+  ]
+}

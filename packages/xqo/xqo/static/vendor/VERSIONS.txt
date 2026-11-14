@@ -1,0 +1,9 @@
+markdown-it 14.1.0 MIT
+markdown-it-footnote 4.0.0 MIT
+markdown-it-task-lists 2.1.1 ISC
+katex 0.16.11 MIT
+mermaid 11.4.1 MIT
+dompurify 3.2.3 (MPL-2.0 OR Apache-2.0)
+@highlightjs/cdn-assets 11.9.0 BSD-3-Clause
+@miniverse/core 0.2.5 MIT (built from github.com/ianscott313/miniverse b1a8922, in miniverse/)
+three 0.186.1 MIT (build/three.module.js, three.core.js and 4 addons, from npm, in three/)

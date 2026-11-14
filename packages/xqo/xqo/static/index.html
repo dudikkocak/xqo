@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{HQ_NAME}}</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%237aa2ff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/vendor/hljs-github-dark.min.css">
+<link rel="stylesheet" href="/static/vendor/katex.min.css">
+<!-- bundled locally so the dashboard works offline; versions in static/vendor/VERSIONS.txt -->
+<script src="/static/vendor/highlight.min.js"></script>
+<script src="/static/usage.js"></script>
+<script src="/static/vendor/markdown-it.min.js"></script>
+<script src="/static/vendor/markdown-it-footnote.min.js"></script>
+<script src="/static/vendor/markdown-it-task-lists.min.js"></script>
+<script src="/static/vendor/katex.min.js"></script>
+<script src="/static/vendor/purify.min.js"></script>
+<script src="/static/render.js"></script>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header><button class="ghost coltog" id="togL" title="Hide the left column">◧</button><span class="dot" id="dot"></span><h1>{{HQ_NAME}}</h1><span id="status">connecting…</span>
+  <span id="usage"></span><span id="ratelim"></span>
+  <span class="spacer"></span>
+  <label id="limbox" title="For one hour, every agent and task (running ones included) runs without max_turns, max_tokens, the task time limit and department budgets; open budget / time-limit questions are answered 'extend'. When the hour ends, tasks get a fresh time period and budget. Untick to restore the limits now."><input type="checkbox" id="limchk">No limits <span id="limleft"></span></label><button class="ghost" id="limre" hidden title="Restart the hour from now">↻ 1h</button>
+  <span id="pluginnav" style="display:contents"></span>
+  <button id="attbadge" title="Show requests"></button>
+  <button class="ghost" id="alerts">🔔 Enable alerts</button>
+  <button class="ghost coltog" id="togalt" title="Alternative layout: flow graph in the middle, notes board on the right, message flow hidden">⇄</button>
+  <button class="ghost coltog" id="togR" title="Hide the right column">◨</button>
+</header>
+<main>
+  <div class="col" id="colL">
+    <section class="fixed" id="attsec"><h2>Needs your attention <span class="tid" id="attcount"></span><button class="ghost" id="attack" hidden title="Dismiss every finished / error / auto-answered alert (open questions stay until answered)">dismiss all</button></h2><div class="scroll" id="attlist"></div></section>
+    <section class="fixed" id="newsec">
+      <h2 class="tabs"><span class="tabbar"><button class="tab on" data-mode="task">New task</button><button class="tab" data-mode="ask" title="Ask the selected task's agents a question">Ask</button><button class="tab" data-mode="steer" title="Change the selected task's instructions">Steer</button></span>
+        <label class="urg" id="urgl" title="New task: pause the selected task and start this one now. Ask/Steer: jump the agent's queue."><input type="checkbox" id="urgent"> Urgent</label></h2>
+      <div style="padding:10px 12px">
+        <div class="tid" id="target" style="display:none"></div>
+        <textarea id="prompt" rows="4" placeholder="Describe the task… Paste or drop files and images here."></textarea>
+        <div class="atts" id="atts"></div>
+        <div class="row"><button class="ghost" id="attach" title="Attach images, PDFs or text files" style="font-size:15px;padding:2px 9px">📎</button>
+          <input type="file" id="afile" multiple hidden><select id="entry"></select><select id="to" style="display:none" title="Who receives the message"></select><button id="send" style="width:110px">Submit</button></div>
+      </div>
+    </section>
+    <div class="vres" data-key="L1"></div>
+    <section class="grow" id="agentsec"><h2>Departments &amp; agents <button class="ghost" id="dreload" title="Re-read the department files without a restart">↻ reload</button></h2><div class="scroll" id="agents"></div></section>
+    <div class="vres" data-key="L2"></div>
+    <section class="grow" id="notesec"><h2>Notes board <span style="display:flex;gap:6px;align-items:center;min-width:0"><span class="tid" id="notetask"></span><select id="nscope" style="width:auto;padding:1px 4px;font-size:11px" title="Task board or a department's own board"><option value="">task</option></select></span></h2>
+      <div class="scroll" id="notes"></div>
+      <div class="row" style="padding:0 12px 10px"><input id="nkey" placeholder="key" style="width:35%"><input id="nval" placeholder="value"><button id="nadd" style="width:60px">Add</button></div>
+    </section>
+  </div>
+  <div class="col" id="colM">
+    <section class="fixed" id="treesec" style="height:200px">
+      <h2>Live viewer
+        <span style="display:flex;gap:8px;align-items:center"><select id="filter" style="width:auto;max-width:320px;padding:2px 6px;font-size:12px"><option value="">all tasks</option></select>
+        <select id="deptf" style="width:auto;padding:2px 6px;font-size:12px;display:none" title="Show events from one department"><option value="">all departments</option></select>
+        <label style="font-size:12px;text-transform:none;white-space:nowrap"><input type="checkbox" id="hidellm" style="width:auto"> hide llm</label>
+        <button class="ghost" id="rpbtn" title="Replay the selected task step by step">▶ replay</button>
+        <button class="ghost" id="tpause" title="Hold the selected task (model calls in progress finish first)" style="display:none">⏸ pause</button>
+        <button class="ghost" id="tresume" title="Continue the selected task" style="display:none">▶ resume</button>
+        <button class="ghost warn" id="tcancel" title="Stop the selected task" style="display:none">⏹ cancel</button>
+        <button class="ghost" id="tarch" title="Archive the selected task: hidden from this list, nothing is removed; unarchive it from ☰ tasks" style="display:none">🗄 archive</button>
+        <button class="ghost danger" id="tdel" title="Delete the selected task" style="display:none">🗑 delete</button>
+        <button class="ghost" id="tmanage" title="Select tasks to archive or delete, the archive and the trash">☰ tasks</button>
+        <span id="pluginbtns" style="display:contents"></span>
+        </span>
+      </h2>
+      <div class="scroll" id="taskinfo"><div class="sub">Pick a task above to see its sub-task tree and results.</div></div>
+    </section>
+    <div class="vres" data-key="M1"></div>
+    <section class="grow" id="flowsec"><h2 id="flowh">Message flow</h2>
+      <div class="rpbar" id="rpbar">
+        <button class="ghost" id="rpfirst" title="First event">⏮</button><button class="ghost" id="rpprev" title="Step back (←)">◀</button>
+        <button id="rpplay" title="Play / pause (space)">▶ play</button><button class="ghost" id="rpnext" title="Step forward (→)">▶</button>
+        <button class="ghost" id="rplast" title="Last event">⏭</button>
+        <select id="rpspeed" title="Speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option><option value="10">10×</option></select>
+        <input type="range" id="rpscrub" min="0" max="0" value="0">
+        <span id="rppos"></span>
+        <button class="ghost" id="rpfork" title="Branch a new task from the current event">⑂ fork here</button>
+      </div>
+      <div class="scroll" id="events"></div></section>
+  </div>
+  <div class="col" id="colR">
+    <section class="fixed" style="height:300px" id="graphsec"><h2>Flow graph <span class="gtools"><span class="tid" id="gstat"></span><select id="glayout" title="Graph layout"></select></span></h2>
+      <div style="flex:1;min-height:0"><svg id="graph" viewBox="0 0 480 320" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <div class="legend" style="padding:6px 12px;border-top:1px solid var(--line);flex:none" id="legend"></div>
+    </section>
+    <div class="vres" data-key="R1"></div>
+    <section class="grow" id="artsec"><h2>Artifacts <span class="gtools"><label style="font-size:12px;text-transform:none;letter-spacing:0;white-space:nowrap" title="Show only the selected task (or the newest one when all tasks are shown)"><input type="checkbox" id="artactive" style="width:auto"> active only</label><button class="ghost" id="artcollapse" title="Collapse every task">collapse</button><button class="ghost" id="artexpand" title="Expand every task">expand</button><button class="ghost" id="refresh">refresh</button></span></h2><div class="scroll" id="artifacts"></div></section>
+  </div>
+</main>
+<div class="dlg" id="dlg"><div class="dbox"><div class="top"><b id="dtitle"></b><span class="spacer"></span><button class="ghost" id="dclose">✕</button></div><div class="dbody" id="dbody"></div></div></div>
+<div id="toast"><span id="tmsg"></span><button class="ghost" id="tundo">Undo</button><button class="ghost" id="tx">✕</button></div>
+<div id="modal"><div class="box">
+  <div class="top"><b id="mfile"></b><span class="tid" id="mtask"></span><span class="spacer"></span>
+    <span id="mtabs"><button class="ghost" data-mt="source">Source</button><button class="ghost" data-mt="rendered">Rendered</button><button class="ghost" data-mt="split">Split</button></span>
+    <button class="ghost" id="mview">View</button><button class="ghost" id="mdiff">Side-by-side diff</button>
+    <a class="ghost" id="mdl" download>Download</a><button class="ghost" id="mroll">Roll back to this version</button>
+    <button class="ghost" id="mclose">✕</button></div>
+  <div class="mid"><div id="vers"></div><div id="viewer"></div></div>
+</div></div>
+<script src="/static/js/core.js"></script>
+<script src="/static/js/agents.js"></script>
+<script src="/static/js/graph.js"></script>
+<script src="/static/js/timeline.js"></script>
+<script src="/static/js/attention.js"></script>
+<script src="/static/js/artifacts.js"></script>
+<script src="/static/js/dialogs.js"></script>
+<script src="/static/js/compose.js"></script>
+<script src="/static/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+services:
+  xqo:
+    # Pin the version you run; an upgrade builds the next tag, a rollback goes back to this one (OPERATIONS.md)
+    image: xqo:${XQO_VERSION:-3.0.0}
+    build:
+      context: .
+      args:
+        VERSION: ${XQO_VERSION:-3.0.0}
+        WITH_NODE: ${WITH_NODE:-0}
+        PLUGINS: ${XQO_PLUGINS:-}       # plugin packages to install, e.g. "xqo-schedules xqo-feeds"
+    restart: unless-stopped
+    # XQO_HOST_PORT picks the port on this machine; keep 127.0.0.1, the dashboard has no login
+    ports: ["127.0.0.1:${XQO_HOST_PORT:-8000}:8000"]
+    environment:
+      - ANTHROPIC_API_KEY
+      # a claude.ai subscription instead of a key: token from `claude setup-token` (leave ANTHROPIC_API_KEY unset, it wins)
+      - CLAUDE_CODE_OAUTH_TOKEN
+      # xqo re-reads CLAUDE_CODE_OAUTH_TOKEN from .env before every Claude Code session (it wins over the value
+      # above), so a renewed token in .env works for the next chat without a restart (docs/CLAUDE-SDK.md)
+      - XQO_OAUTH_TOKEN_FILE=/run/xqo/config/.env
+      # host path of ./data, so the dashboard's 📁 folder links show and open the real folders
+      - XQO_PATH_MAP=/data=${PWD}/data
+    volumes:
+      - ./data:/data
+      - ./:/run/xqo/config:ro   # this folder, read-only: only .env is read from it

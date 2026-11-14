@@ -1,0 +1,459 @@
+{
+  "about": "What the 3D office can place. Shipped with the dashboard; an HQ adds its own entries in office.json (catalog). size: [width, depth] in tiles; blocks: agents walk around it; anchors: spots agents use (work = a desk seat, rest, social, utility, wander = where idle agents walk to; act = what an idle agent pretends to do there: read, drink, sit, write, tend), in tiles from the prop's top-left before it is turned; with: props that come along (a desk's chair); glb: a model under /static/office3d/ (or assets/<file>.glb, uploaded to this HQ); builtin: drawn by office3d.js; yscale: squash (or stretch) a model's height; marker: shown only in Edit mode (not in 2D); sprite2d: the 2D office's picture.",
+  "props": {
+    "wooden_desk_single": {
+      "label": "Desk with computer",
+      "builtin": "desk",
+      "size": [
+        3,
+        2
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "work",
+          "ox": 1,
+          "oy": 2
+        }
+      ],
+      "with": [
+        {
+          "type": "ergonomic_chair",
+          "x": 1,
+          "y": 2
+        }
+      ],
+      "sprite2d": "wooden_desk_single",
+      "tags": [
+        "work"
+      ]
+    },
+    "ergonomic_chair": {
+      "label": "Desk chair",
+      "builtin": "chair",
+      "size": [
+        1,
+        1
+      ],
+      "layer": "above",
+      "sprite2d": "ergonomic_chair",
+      "tags": [
+        "work"
+      ]
+    },
+    "plain_desk": {
+      "label": "Desk (no computer)",
+      "glb": "furniture/desk.glb",
+      "scale": 3.4,
+      "yscale": 0.75,
+      "size": [
+        3,
+        2
+      ],
+      "blocks": true,
+      "sprite2d": "wooden_desk_single",
+      "tags": [
+        "work"
+      ]
+    },
+    "office_chair": {
+      "label": "Office chair",
+      "glb": "furniture/chairDesk.glb",
+      "scale": 2.448,
+      "rot": 180,
+      "size": [
+        1,
+        1
+      ],
+      "sprite2d": "ergonomic_chair",
+      "tags": [
+        "work"
+      ]
+    },
+    "meeting_table": {
+      "label": "Meeting table",
+      "builtin": "meeting_table",
+      "size": [
+        4,
+        2
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "social",
+          "ox": 1,
+          "oy": 2
+        },
+        {
+          "type": "social",
+          "ox": 2,
+          "oy": -1
+        }
+      ],
+      "tags": [
+        "work"
+      ]
+    },
+    "wooden_framed_whiteboard": {
+      "label": "Whiteboard",
+      "builtin": "whiteboard",
+      "size": [
+        2,
+        1
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "social",
+          "act": "write",
+          "ox": 0.5,
+          "oy": 1.5
+        },
+        {
+          "type": "social",
+          "act": "write",
+          "ox": 1.5,
+          "oy": 1.5
+        }
+      ],
+      "sprite2d": "wooden_framed_whiteboard",
+      "tags": [
+        "work"
+      ]
+    },
+    "bookshelf_packed": {
+      "label": "Bookshelf",
+      "builtin": "bookshelf",
+      "size": [
+        2.3,
+        2
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "social",
+          "act": "read",
+          "ox": 0.6,
+          "oy": 2.4
+        },
+        {
+          "type": "social",
+          "act": "read",
+          "ox": 1.7,
+          "oy": 2.4
+        }
+      ],
+      "sprite2d": "bookshelf_packed",
+      "tags": [
+        "storage"
+      ]
+    },
+    "server_rack": {
+      "label": "Server rack",
+      "builtin": "server_rack",
+      "size": [
+        1,
+        1
+      ],
+      "blocks": true,
+      "tags": [
+        "storage"
+      ]
+    },
+    "tall_potted_plant": {
+      "label": "Potted plant",
+      "glb": "furniture/pottedPlant.glb",
+      "scale": 3.4,
+      "size": [
+        1,
+        2
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "social",
+          "act": "tend",
+          "ox": 0.5,
+          "oy": 2.5
+        }
+      ],
+      "sprite2d": "tall_potted_plant",
+      "tags": [
+        "decor"
+      ]
+    },
+    "floor_lamp": {
+      "label": "Floor lamp",
+      "builtin": "floor_lamp",
+      "size": [
+        1,
+        1
+      ],
+      "blocks": true,
+      "tags": [
+        "decor"
+      ]
+    },
+    "area_rug_lounge": {
+      "label": "Rug",
+      "builtin": "rug",
+      "size": [
+        4,
+        3
+      ],
+      "sprite2d": "area_rug_lounge",
+      "tags": [
+        "decor"
+      ]
+    },
+    "large_window": {
+      "label": "Window (back wall)",
+      "builtin": "window",
+      "size": [
+        3,
+        2
+      ],
+      "sprite2d": "large_window",
+      "tags": [
+        "building"
+      ]
+    },
+    "partition_wall": {
+      "label": "Partition wall",
+      "builtin": "partition",
+      "size": [
+        3,
+        0.3
+      ],
+      "blocks": true,
+      "tags": [
+        "building"
+      ]
+    },
+    "doorway": {
+      "label": "Doorway",
+      "builtin": "door",
+      "size": [
+        2,
+        0.3
+      ],
+      "color": "#c9ced6",
+      "tags": [
+        "building"
+      ]
+    },
+    "waypoint": {
+      "label": "Waypoint",
+      "builtin": "waypoint",
+      "size": [
+        1,
+        1
+      ],
+      "marker": true,
+      "anchors": [
+        {
+          "type": "wander",
+          "ox": 0.5,
+          "oy": 0.5
+        }
+      ],
+      "tags": [
+        "paths"
+      ]
+    },
+    "coffee_bar_counter": {
+      "label": "Coffee bar",
+      "builtin": "coffee_bar",
+      "size": [
+        2.7,
+        2.5
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "utility",
+          "act": "drink",
+          "ox": 1.6,
+          "oy": 3.1
+        },
+        {
+          "type": "utility",
+          "act": "drink",
+          "ox": 2.4,
+          "oy": 3.1
+        }
+      ],
+      "with": [
+        {
+          "type": "espresso_machine",
+          "x": 0.5,
+          "y": 0.4
+        }
+      ],
+      "sprite2d": "coffee_bar_counter",
+      "tags": [
+        "lounge"
+      ]
+    },
+    "espresso_machine": {
+      "label": "Espresso machine",
+      "builtin": "espresso",
+      "size": [
+        1.1,
+        0.8
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "utility",
+          "act": "drink",
+          "ox": 0.5,
+          "oy": 2.6
+        }
+      ],
+      "sprite2d": "espresso_machine",
+      "tags": [
+        "lounge"
+      ]
+    },
+    "mini_fridge": {
+      "label": "Fridge",
+      "builtin": "fridge",
+      "size": [
+        0.8,
+        1.1
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "utility",
+          "act": "drink",
+          "ox": 0.4,
+          "oy": 1.8
+        }
+      ],
+      "sprite2d": "mini_fridge",
+      "tags": [
+        "lounge"
+      ]
+    },
+    "low_coffee_table": {
+      "label": "Coffee table",
+      "builtin": "coffee_table",
+      "size": [
+        1.5,
+        1.5
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "social",
+          "ox": 0.75,
+          "oy": 2
+        }
+      ],
+      "sprite2d": "low_coffee_table",
+      "tags": [
+        "lounge"
+      ]
+    },
+    "sofa": {
+      "label": "Sofa",
+      "builtin": "sofa",
+      "size": [
+        5,
+        1.2
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "social",
+          "act": "sit",
+          "ox": 0.5,
+          "oy": 1.6
+        },
+        {
+          "type": "social",
+          "act": "sit",
+          "ox": 1.5,
+          "oy": 1.6
+        },
+        {
+          "type": "social",
+          "act": "sit",
+          "ox": 3.5,
+          "oy": 1.6
+        },
+        {
+          "type": "social",
+          "act": "sit",
+          "ox": 4.5,
+          "oy": 1.6
+        }
+      ],
+      "tags": [
+        "lounge"
+      ]
+    },
+    "bean_bag_chair_dark": {
+      "label": "Beanbag (dark)",
+      "builtin": "beanbag",
+      "color": "#4a5568",
+      "size": [
+        1.5,
+        1.5
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "rest",
+          "ox": 0.75,
+          "oy": 1.5
+        }
+      ],
+      "sprite2d": "bean_bag_chair_dark",
+      "tags": [
+        "lounge"
+      ]
+    },
+    "bean_bag_chair_light": {
+      "label": "Beanbag (orange)",
+      "builtin": "beanbag",
+      "color": "#e9a23b",
+      "size": [
+        1.5,
+        1.5
+      ],
+      "blocks": true,
+      "anchors": [
+        {
+          "type": "rest",
+          "ox": 0.75,
+          "oy": 1.5
+        }
+      ],
+      "sprite2d": "bean_bag_chair_light",
+      "tags": [
+        "lounge"
+      ]
+    }
+  },
+  "characters": {
+    "character-female-a": {
+      "label": "Character A",
+      "glb": "characters/character-female-a.glb"
+    },
+    "character-male-a": {
+      "label": "Character B",
+      "glb": "characters/character-male-a.glb"
+    },
+    "character-female-d": {
+      "label": "Character C",
+      "glb": "characters/character-female-d.glb"
+    },
+    "character-male-c": {
+      "label": "Character D",
+      "glb": "characters/character-male-c.glb"
+    }
+  }
+}

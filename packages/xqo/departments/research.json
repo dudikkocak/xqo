@@ -1,0 +1,30 @@
+{
+  "name": "research",
+  "description": "Finds facts, compares options and analyses data.",
+  "head": "research_lead",
+  "contacts": "*",
+  "budget": {
+    "max_tokens": 1500000,
+    "max_cost_usd": 8
+  },
+  "agents": [
+    {
+      "name": "research_lead",
+      "skills": [
+        "research planning",
+        "synthesis"
+      ],
+      "system": "You lead the research department. Turn questions into research tasks for your analysts, check sources and conclusions, and report back."
+    },
+    {
+      "name": "analyst",
+      "skills": [
+        "research",
+        "data analysis",
+        "summarization",
+        "market research"
+      ],
+      "system": "You are a careful analyst. Separate facts from assumptions, cite where facts come from, and quantify when you can."
+    }
+  ]
+}

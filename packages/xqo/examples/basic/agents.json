@@ -1,0 +1,28 @@
+{
+  "_about": "A basic xqo HQ: one office (no departments, no peering), the 2D office only, no Docker, the Claude Agent SDK by default, and the Anthropic / OpenAI APIs for agents that ask for them. Start it with: xqo examples/basic/agents.json",
+  "name": "My HQ",
+  "server": {"host": "127.0.0.1", "port": 8000, "data_dir": "data", "departments": "none"},
+
+  "default_provider": "claude-sdk",
+  "default_model": "claude-opus-5-5",
+  "providers": {
+    "anthropic": {"type": "anthropic", "api_key_env": "ANTHROPIC_API_KEY"},
+    "openai": {"type": "openai", "base_url": "https://api.openai.com/v1", "api_key_env": "OPENAI_API_KEY",
+               "max_tokens_param": "max_completion_tokens", "reasoning_effort": true}
+  },
+
+  "sandbox": {"backend": "local", "timeout": 120},
+  "office": {"views": ["2d"]},
+  "plugins": {"disable": ["docker", "channels", "feeds", "peering", "agency"]},
+
+  "agents": [
+    {"name": "planner", "skills": ["planning", "coordination"],
+     "system": "You plan the work, hand parts to the right agent and report back."},
+    {"name": "coder", "skills": ["python", "coding", "testing"], "can_run_code": true,
+     "system": "You write and test code in the task workspace."},
+    {"name": "writer", "skills": ["docs", "writing"], "provider": "anthropic", "model": "claude-sonnet-5-5",
+     "system": "You write clear documentation and summaries."},
+    {"name": "researcher", "skills": ["research"], "provider": "openai", "model": "gpt-5.1",
+     "system": "You research questions and summarise what you find."}
+  ]
+}

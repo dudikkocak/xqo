@@ -18,7 +18,7 @@ from typing import Iterable, Iterator
 
 from xqo.api import SEED_KINDS, EventStore, Plugin, register_store
 
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 KEYS = {"backend", "dsn_env", "table"}
 
 TABLE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")

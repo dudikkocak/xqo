@@ -11,7 +11,9 @@ released together with the same version (starting at 3.0.0).
 | `xqo-sqlite` | [packages/xqo-sqlite](packages/xqo-sqlite) | SQLite event store (`"storage": {"backend": "sqlite"}`) |
 | `xqo-postgres` | [packages/xqo-postgres](packages/xqo-postgres) | PostgreSQL event store, for several servers sharing one store |
 | `xqo-docker` | [packages/xqo-docker](packages/xqo-docker) | Docker sandbox backend for `run_code` |
-| `xqo-schedules`, `xqo-feeds`, `xqo-channels`, `xqo-peering`, `xqo-toolchains`, `xqo-agency` | `packages/xqo-<name>` (coming) | optional plugins |
+| `xqo-toolchains` | [packages/xqo-toolchains](packages/xqo-toolchains) | Node, Go, Rust and .NET setup for `run_code` |
+| `xqo-agency` | [packages/xqo-agency](packages/xqo-agency) | `xqo agency`: import agents from the agency-agents library |
+| `xqo-schedules`, `xqo-feeds`, `xqo-channels`, `xqo-peering` | `packages/xqo-<name>` (coming) | optional plugins |
 
 ```bash
 pip install xqo            # the base package

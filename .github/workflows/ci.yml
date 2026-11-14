@@ -29,14 +29,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [xqo-sqlite, xqo-docker]
+        package: [xqo-sqlite, xqo-docker, xqo-agency, xqo-toolchains]
+        include:
+          - package: xqo-toolchains
+            with: -e packages/xqo-docker  # its docker tests need the docker backend
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
       - name: Install xqo and ${{ matrix.package }}
-        run: uv pip install -e "packages/xqo[dev]" -e "packages/${{ matrix.package }}[dev]"
+        run: uv pip install -e "packages/xqo[dev]" -e "packages/${{ matrix.package }}[dev]" ${{ matrix.with }}
       - name: Tests
         run: uv run --no-project python -m pytest packages/${{ matrix.package }}/tests -q --timeout 120
 
@@ -73,14 +76,14 @@ jobs:
           python-version: "3.12"
       - name: Build the wheels and check their files
         run: |
-          for p in xqo xqo-sqlite xqo-postgres xqo-docker; do
+          for p in $(python3 tools/release_check.py --list); do
             uv run --no-project python tools/check_wheel.py packages/$p
           done
       - name: Install the wheel and import the public API
         run: |
-          for p in xqo xqo-sqlite xqo-postgres xqo-docker; do uv build --wheel --out-dir dist packages/$p; done
+          for p in $(python3 tools/release_check.py --list); do uv build --wheel --out-dir dist packages/$p; done
           uv venv /tmp/w
           uv pip install --python /tmp/w/bin/python dist/*.whl
           /tmp/w/bin/python -c "import xqo.api as a; print(a.__version__, a.API_VERSION)"
           /tmp/w/bin/xqo --help > /dev/null
-          /tmp/w/bin/python -c "import json, pathlib, tempfile; from xqo.config import build; d = pathlib.Path(tempfile.mkdtemp()); c = d / 'agents.json'; c.write_text(json.dumps({'agents': [{'name': 'p', 'skills': ['planning']}]})); s = build(c, d / 'a', str(d / 'l' / 'e.jsonl'), mock=True, departments='none').plugins.states; bad = [n for n in ('sqlite', 'postgres', 'docker') if s[n].state not in ('active', 'inactive')]; assert not bad, bad"
+          /tmp/w/bin/python -c "import json, pathlib, tempfile; from xqo.config import build; d = pathlib.Path(tempfile.mkdtemp()); c = d / 'agents.json'; c.write_text(json.dumps({'agents': [{'name': 'p', 'skills': ['planning']}]})); s = build(c, d / 'a', str(d / 'l' / 'e.jsonl'), mock=True, departments='none').plugins.states; bad = [n for n in ('sqlite', 'postgres', 'docker', 'toolchains', 'agency') if s[n].state not in ('active', 'inactive')]; assert not bad, bad"

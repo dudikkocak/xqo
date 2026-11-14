@@ -1,0 +1,67 @@
+{
+  "default_model": "claude-opus-5-5",
+  "default_max_tokens": 32000,
+  "default_effort": "medium",
+  "attention_timeout": 180,
+  "sandbox": {
+    "backend": "auto",
+    "image": "astral/uv:python3.12-bookworm-slim",
+    "timeout": 120,
+    "network": false,
+    "memory": "1g",
+    "cpus": "1",
+    "venv": true,
+    "venv_tool": "uv",
+    "python": ""
+  },
+  "compaction": {
+    "enabled": true,
+    "keep_turns": 2,
+    "min_chars": 1500,
+    "batch_chars": 20000
+  },
+  "trash": {
+    "retention_days": 7
+  },
+  "git": {
+    "enabled": true,
+    "branch": "main",
+    "remote": "",
+    "push_token_env": "XQO_GIT_TOKEN"
+  },
+  "mcp_servers": [],
+  "_mcp_examples": [
+    {
+      "name": "fs",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ]
+    },
+    {
+      "name": "docs",
+      "url": "https://example.com/mcp",
+      "token_env": "DOCS_MCP_TOKEN",
+      "allowed_tools": [
+        "search"
+      ]
+    }
+  ],
+  "agents": [
+    {
+      "name": "planner",
+      "skills": [
+        "planning",
+        "coordination"
+      ],
+      "write_paths": [
+        "plans/**",
+        "docs/**",
+        "*.md"
+      ],
+      "system": "You are the headquarters planner. Break the user's request into sub-tasks and delegate each one: handover_task finds the department whose members have the skill, and its head assigns the work. Then combine the results into one final answer. You write plans and steps, never code: send every code change, bug fix and code or runtime error to engineering with handover_task, even a one-line fix."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xqo-feeds"
+version = "3.1.0"
+description = "Local feeds and rules that wake xqo agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "dudikkocak"}]
+dependencies = [
+  "xqo>=3.0,<4",
+  "xqo-schedules>=3.1,<4",
+  "psutil>=5.9",
+  "watchfiles>=0.21",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-timeout>=2.3", "httpx>=0.27"]
+
+[project.urls]
+Homepage = "https://github.com/dudikkocak/xqo"
+
+[project.entry-points."xqo.plugins"]
+feeds = "xqo_feeds.plugin:FeedsPlugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+xqo_feeds = ["static/*"]

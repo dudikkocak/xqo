@@ -18,6 +18,8 @@ REQUIRED = {
     "xqo": ["xqo/static/index.html", "xqo/static/js/core.js", "xqo/default_agents.json",
             "xqo/plugins/office/static/office.js", "xqo/plugins/office/static/office3d.js",
             "xqo/plugins/office/static/office2d.js"],
+    "xqo-schedules": ["xqo_schedules/static/ui.js"],
+    "xqo-feeds": ["xqo_feeds/static/ui.js"],
 }
 
 

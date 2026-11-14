@@ -13,11 +13,14 @@ released together with the same version (starting at 3.0.0).
 | `xqo-docker` | [packages/xqo-docker](packages/xqo-docker) | Docker sandbox backend for `run_code` |
 | `xqo-toolchains` | [packages/xqo-toolchains](packages/xqo-toolchains) | Node, Go, Rust and .NET setup for `run_code` |
 | `xqo-agency` | [packages/xqo-agency](packages/xqo-agency) | `xqo agency`: import agents from the agency-agents library |
-| `xqo-schedules`, `xqo-feeds`, `xqo-channels`, `xqo-peering` | `packages/xqo-<name>` (coming) | optional plugins |
+| `xqo-schedules` | [packages/xqo-schedules](packages/xqo-schedules) | scheduled and repeating tasks (cron, every, at) |
+| `xqo-feeds` | [packages/xqo-feeds](packages/xqo-feeds) | local feeds and rules that wake agents (needs `xqo-schedules`) |
+| `xqo-channels`, `xqo-peering` | `packages/xqo-<name>` (coming) | optional plugins |
 
 ```bash
-pip install xqo            # the base package
-pip install "xqo[all]"     # with every plugin (once the plugin packages are published)
+pip install xqo                  # the base package
+pip install "xqo[automation]"    # with schedules and feeds
+pip install "xqo[all]"           # with every plugin
 ```
 
 Start with [packages/xqo/README.md](packages/xqo/README.md). Writing a plugin: [packages/xqo/PLUGINS.md](packages/xqo/PLUGINS.md).

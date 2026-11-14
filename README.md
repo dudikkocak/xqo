@@ -47,9 +47,9 @@ All packages share one version. Bump it in every `packages/*/pyproject.toml` (th
 git tag v3.0.0 && git push origin v3.0.0
 ```
 
-The `release` workflow checks the versions against the tag, builds every package and publishes them to PyPI with
-trusted publishing (no token in the repository). Each package name needs a trusted publisher on PyPI: owner
-`dudikkocak`, repository `xqo`, workflow `release.yml`, environment `pypi`.
+The `release` workflow checks the versions against the tag, builds every package and uploads them to PyPI with the
+`PYPI_API_TOKEN` repository secret. The first upload of a new package name needs a token scoped to the whole
+PyPI account.
 
 ## License
 

@@ -652,3 +652,15 @@ def format_result(r: dict) -> str:
     if r.get("error"):
         head += f"\n[sandbox ERROR: {r['error']}]"
     return f"{head}\n--- stdout ---\n{r['stdout']}\n--- stderr ---\n{r['stderr']}"
+
+
+# ---- public names for container backends (exported by xqo.api; the underscored names stay for core callers) ----
+docker_kill = _docker_kill
+docker_user = _docker_user
+net_args = _net_args
+setup_net_args = _setup_net_args
+
+
+def current_toolchains():
+    """The toolchains module installed with use_toolchains(), or None."""
+    return toolchains

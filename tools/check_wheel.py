@@ -1,6 +1,7 @@
 """Build a package's wheel and check that its browser files and package data made it in.
 
     python tools/check_wheel.py packages/xqo
+    python tools/check_wheel.py packages/xqo-sqlite
 
 A wheel without its static files installs fine but the dashboard UI silently disappears, so CI checks it.
 """
@@ -29,8 +30,17 @@ def main(folder: str) -> int:
         if len(wheels) != 1:
             print(f"expected one wheel, got {wheels}")
             return 1
-        names = set(zipfile.ZipFile(wheels[0]).namelist())
+        with zipfile.ZipFile(wheels[0]) as z:
+            names = set(z.namelist())
+            eps = [n for n in names if n.endswith(".dist-info/entry_points.txt")]
+            entry_points = z.read(eps[0]).decode() if eps else ""
     missing = [f for f in REQUIRED.get(name, []) if f not in names]
+    if name != "xqo":  # a plugin package: its module, and the entry point that lets xqo find it
+        mod = name.replace("-", "_")
+        if f"{mod}/__init__.py" not in names:
+            missing.append(f"{mod}/__init__.py")
+        if "[xqo.plugins]" not in entry_points:
+            missing.append("an [xqo.plugins] entry point")
     statics = [n for n in names if "/static/" in n]
     print(f"{wheels[0].name}: {len(names)} files, {len(statics)} static")
     if missing:

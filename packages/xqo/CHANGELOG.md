@@ -19,4 +19,8 @@ the office plugin (2D and 3D) and the Claude Agent SDK, and stores events in jso
 - The core no longer names optional features: no fixed `bus.scheduler` / `bus.peers` / `bus.channels` /
   `bus.feeds` slots, no `scheduler` key in `/api/health`, no `peering` key in `/api/config` (plugin status is
   in `/api/plugins`).
+- **First plugin packages:** `xqo-sqlite` and `xqo-postgres` (event stores) and `xqo-docker` (sandbox backend),
+  each tested against the base package alone. `xqo.api` adds what a container backend needs (`SandboxConfig`,
+  `current_toolchains`, `docker_kill`, `docker_user`, `net_args`, `setup_net_args`, `DOCKER_PATH`,
+  `is_python_project`, `mount_hint`, `uv_pip_command`), and `xqo.testing` holds the storage contract checks.
 - Docker: image `xqo:<version>`; build arg `PLUGINS` (compose: `XQO_PLUGINS`) installs plugin packages.

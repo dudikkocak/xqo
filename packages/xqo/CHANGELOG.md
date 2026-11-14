@@ -12,6 +12,12 @@
   `xqo peers`, the ⇆ peers panel). Backups keep `artifacts/channels/` and `artifacts/.peers/`. The office reads
   its HQ name from peering through `bus.plugins.service("peering")`. `xqo.api` adds `max_file_bytes()`.
 - With this release every plugin of xqo 1.2.0 is a package again.
+- Checked against the xqo 1.2.0 test suite: with `xqo[all]` installed, 590 of its tests pass. The other 7 test
+  behaviour that 3.x changed on purpose:
+  - `bus.scheduler`, `bus.feeds`, `bus.channels` and `bus.peers` are not set at all while their plugin is inactive
+    (1.2.0 set them to `None`). Use `bus.plugins.service("<name>")`, which returns `None`.
+  - `/api/health` has no `scheduler` key and `/api/config` has no `peering` key; plugin state is in `/api/plugins`.
+  - An unknown storage backend is reported as "backend '<name>' is not installed; available: ...".
 - New extras `xqo[toolchains]`, `xqo[agency]`, `xqo[schedules]`, `xqo[feeds]`, `xqo[automation]` (schedules and
   feeds), `xqo[channels]` and `xqo[peering]`; `xqo[all]` includes them.
 

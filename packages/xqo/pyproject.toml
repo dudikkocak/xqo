@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xqo-lite"
+dynamic = ["version"]
+description = "xqo-lite: the xqo core with the 2D / 3D office and the Claude Agent SDK; events in jsonl"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "anthropic>=2.2.0",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "httpx>=0.27",
+  "claude-agent-sdk>=0.2.170",   # agents run as Claude Code sessions; also brings the mcp package
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-timeout>=2.3", "httpx>=0.27"]
+
+[project.scripts]
+xqo = "xqo.__main__:main"
+
+[tool.setuptools]
+packages = {find = {include = ["xqo*"]}}
+
+[tool.setuptools.dynamic]
+version = {attr = "xqo.__version__"}
+
+[tool.setuptools.package-data]
+xqo = ["static/*", "static/js/*", "static/vendor/*", "static/vendor/fonts/*", "default_agents.json", "default_departments/*", "plugins/office/static/*", "plugins/office/static/office/*/*", "plugins/office/static/office3d/*", "plugins/office/static/office3d/*/*", "plugins/office/static/office3d/*/*/*", "plugins/office/static/vendor/miniverse/*", "plugins/office/static/vendor/three/*", "plugins/office/static/vendor/three/addons/*/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 60

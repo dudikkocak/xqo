@@ -1,6 +1,11 @@
 # Changelog
 
-## 3.1.0 (unreleased)
+## 3.1.1
+
+- Releases upload to PyPI with Trusted Publishing (OIDC) instead of a stored API token.
+- CI uses `actions/checkout@v5` and `astral-sh/setup-uv@v7` (Node.js 24).
+
+## 3.1.0
 
 - New plugin packages **`xqo-toolchains`** (Node, Go, Rust and .NET for `run_code`) and **`xqo-agency`** (the
   `xqo agency` importer, whose files `xqo backup` keeps through `Plugin.config_files`).

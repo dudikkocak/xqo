@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xqo-toolchains"
-version = "3.1.0"
+version = "3.1.1"
 description = "Node, Go, Rust and .NET setup for xqo run_code"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -12,10 +12,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
+          activate-environment: true  # v6+ no longer creates .venv on its own
       - name: Check that every package's version matches the tag
         run: uv run --no-project python tools/release_check.py "${GITHUB_REF_NAME#v}"
       - name: Build and check the sdists and wheels

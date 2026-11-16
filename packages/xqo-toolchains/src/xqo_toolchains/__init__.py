@@ -11,7 +11,7 @@ import shutil
 
 from xqo.api import Plugin, use_toolchains
 
-__version__ = "3.1.0"
+__version__ = "3.1.1"
 
 
 class ToolchainsPlugin(Plugin):

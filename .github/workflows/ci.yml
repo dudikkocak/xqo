@@ -13,12 +13,13 @@ jobs:
       matrix:
         python: ["3.11", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python }}
+          activate-environment: true  # v6+ no longer creates .venv on its own
       - name: Install xqo
-        # setup-uv with python-version already creates and activates .venv
+        # activate-environment makes setup-uv create and activate .venv
         run: uv pip install -e "packages/xqo[dev]"
       - name: Tests
         run: uv run --no-project python -m pytest packages/xqo/tests -q --timeout 120
@@ -36,10 +37,11 @@ jobs:
           - package: xqo-feeds
             with: -e packages/xqo-schedules  # a dependency, not yet on PyPI at this version
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
+          activate-environment: true  # v6+ no longer creates .venv on its own
       - name: Install xqo and ${{ matrix.package }}
         run: uv pip install -e "packages/xqo[dev]" -e "packages/${{ matrix.package }}[dev]" ${{ matrix.with }}
       - name: Tests
@@ -60,10 +62,11 @@ jobs:
     env:
       XQO_TEST_PG_DSN: postgresql://xqo:xqo@localhost:5432/xqo_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
+          activate-environment: true  # v6+ no longer creates .venv on its own
       - name: Install xqo and xqo-postgres
         run: uv pip install -e "packages/xqo[dev]" -e "packages/xqo-postgres[dev]"
       - name: Tests (they skip without XQO_TEST_PG_DSN, so check that none did)
@@ -72,10 +75,11 @@ jobs:
   wheel:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
+          activate-environment: true  # v6+ no longer creates .venv on its own
       - name: Build the wheels and check their files
         run: |
           for p in $(python3 tools/release_check.py --list); do

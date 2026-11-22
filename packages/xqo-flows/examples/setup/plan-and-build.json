@@ -26,5 +26,11 @@
     {"sourceNodeID": "ok", "targetNodeID": "doc", "sourcePortID": "approve"},
     {"sourceNodeID": "ok", "targetNodeID": "end_no", "sourcePortID": "reject"},
     {"sourceNodeID": "doc", "targetNodeID": "end_ok"}
+  ],
+  "triggers": [
+    {"id": "weekday-morning", "type": "schedule", "cron": "0 7 * * 1-5", "tz": "Europe/Berlin", "enabled": false,
+     "inputs": {"what": "the next item in BACKLOG.md"}},
+    {"id": "github-issue", "type": "webhook", "secret_env": "FLOW_PLAN_BUILD_SECRET", "max_per_minute": 10,
+     "inputs": {"what": "{{body.issue.title}}: {{body.issue.body}}"}}
   ]
 }

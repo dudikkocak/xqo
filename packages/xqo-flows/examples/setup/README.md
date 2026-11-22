@@ -4,7 +4,7 @@
 |---|---|---|
 | `hq.agents.json` | HQ | Turns flows on, opens the worker API on port 8200 and lists two workers with their labels |
 | `worker.agents.json` | worker | The worker's own agents and its `flows_worker` block (HQ address, name, token variable) |
-| `plan-and-build.json` | HQ | A flow: plan on the HQ, then build on a `gpu` worker, then your approval, then a write-up |
+| `plan-and-build.json` | HQ | A flow: plan on the HQ, then build on a `gpu` worker, then your approval, then a write-up. Triggers: a GitHub issue webhook and a weekday schedule (off until you tick it). |
 | `env.example` | both | The token variables |
 | `docker-compose.hq.yml` | HQ | Overlay for `packages/xqo/docker-compose.yml` that publishes the worker API |
 | `docker-compose.worker.yml` | worker | A worker container with no published port |
@@ -54,3 +54,14 @@ xqo flows import plan-and-build.json && xqo flows run plan-and-build
 
 `--mock` uses the scripted offline model, so the answers are canned, but every step, worker job, approval and
 live status in the editor is real.
+
+## The webhook trigger
+
+`plan-and-build` starts when a GitHub issue webhook arrives. In the repository's *Settings → Webhooks*, add
+`https://<your HQ's public address>/flows/v1/hooks/plan-and-build/github-issue`, content type `application/json`,
+the secret from `FLOW_PLAN_BUILD_SECRET`, and the *Issues* event. To try it by hand:
+
+```bash
+curl -X POST http://127.0.0.1:8200/flows/v1/hooks/plan-and-build/github-issue \
+  -H "Authorization: Bearer $FLOW_PLAN_BUILD_SECRET" -d '{"issue": {"title": "Add CSV export", "body": "..."}}'
+```

@@ -6,8 +6,11 @@ xqo-flows), so it can run behind NAT. Its agents, API keys, sandbox and budgets 
 Jobs
 - "task": one agent step of a flow that runs on the HQ ({agent, prompt, title, unattended}). The step becomes an
   ordinary root task here; its result goes back to the HQ.
-- "flow": a whole flow ({flow, inputs, run_id}), run here by the same engine as on the HQ. Node states go back with
-  every heartbeat, so the HQ's editor shows the run live.
+- "flow": a whole flow ({flow, inputs, run_id, approval_timeout, nodes}), run here by the same engine as on the HQ.
+  Node states go back with every heartbeat, so the HQ's editor shows the run live. An approval step is asked on
+  the HQ: the question goes up with the heartbeats (progress["approvals"]) and the HQ's answer comes back in the
+  heartbeat's reply ({"answers": {node: "approve"|"reject"}}). "nodes" is set when the HQ resumes a run: steps
+  already done keep their results.
 
 While a job runs the worker sends a heartbeat every lease/3 seconds; when the HQ answers {"cancel": true} the job's
 task is cancelled here. If the HQ cannot be reached the worker keeps trying with a growing pause (up to 30 s)."""
@@ -54,6 +57,45 @@ class HQClient:
 
     async def acall(self, method: str, path: str, body: dict | None = None, timeout: float | None = None) -> dict:
         return await asyncio.to_thread(self.call, method, path, body, timeout)
+
+
+class WorkerSteps(BusSteps):
+    """Agent steps run here; approval steps are asked on the HQ through the heartbeats."""
+
+    where = "a worker (remote steps run on the HQ)"
+
+    def __init__(self, bus, changed, progress: dict, poke: asyncio.Event, approval_timeout: float | None):
+        super().__init__(bus, changed)
+        self.progress = progress
+        self.poke = poke
+        self.approval_timeout = approval_timeout
+        self.waiting: dict[str, asyncio.Future] = {}
+
+    async def approval(self, run: Run, node: dict, question: str) -> str:
+        nid = node["id"]
+        fut = asyncio.get_running_loop().create_future()
+        self.waiting[nid] = fut
+        self.progress.setdefault("approvals", {})[nid] = {"question": question}
+        run.nodes[nid]["question"] = question
+        self._changed(run, nid)
+        self.poke.set()  # tell the HQ now, not at the next regular heartbeat
+        timeout = node["data"].get("timeout") or self.approval_timeout
+        try:
+            answer, by = await asyncio.wait_for(asyncio.shield(fut), timeout), "user"
+        except asyncio.TimeoutError:
+            answer, by = node["data"].get("default", "reject"), "timeout"
+        finally:
+            self.waiting.pop(nid, None)
+            self.progress.get("approvals", {}).pop(nid, None)
+            self.poke.set()
+        run.nodes[nid].update(answer=answer, answered_by=by)
+        return answer
+
+    def answers(self, answers: dict) -> None:
+        for nid, a in (answers or {}).items():
+            fut = self.waiting.get(nid)
+            if fut and not fut.done() and a in ("approve", "reject"):
+                fut.set_result(a)
 
 
 class Worker:
@@ -124,9 +166,11 @@ class Worker:
     async def handle(self, job: dict) -> None:
         jid = job["id"]
         progress: dict = {}
+        poke = asyncio.Event()
+        box: dict = {}  # the job's WorkerSteps, for answers that come back with heartbeats
         self.log(f"job {jid}: {job['kind']} {job['spec'].get('title', '')}")
-        work = asyncio.ensure_future(self._work(job, progress))
-        beat = asyncio.ensure_future(self._heartbeat(jid, work, progress))
+        work = asyncio.ensure_future(self._work(job, progress, poke, box))
+        beat = asyncio.ensure_future(self._heartbeat(jid, work, progress, poke, box))
         status, result, error = "error", "", ""
         try:
             out = await work
@@ -157,9 +201,18 @@ class Worker:
             self.done += 1
             self.log(f"job {jid}: {status}" + (f" ({error[:200]})" if error else ""))
 
-    async def _heartbeat(self, jid: str, work: asyncio.Task, progress: dict) -> None:
+    async def _heartbeat(self, jid: str, work: asyncio.Task, progress: dict, poke: asyncio.Event | None = None,
+                         box: dict | None = None) -> None:
+        poke = poke or asyncio.Event()
+        box = box if box is not None else {}
         while not work.done():
-            await asyncio.sleep(max(0.05, self.lease / 3))
+            # every lease/3; every second while an approval waits (so its answer comes back quickly)
+            pause = 1.0 if progress.get("approvals") else self.lease / 3
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(poke.wait(), max(0.05, pause))
+            poke.clear()
+            if work.done():
+                return
             try:
                 r = await self.hq.acall("POST", f"/flows/v1/jobs/{jid}/heartbeat", {"progress": progress})
             except HQError as e:
@@ -173,8 +226,10 @@ class Worker:
                 self.log(f"job {jid}: cancelled by the HQ")
                 work.cancel()
                 return
+            if r.get("answers") and box.get("steps"):
+                box["steps"].answers(r["answers"])
 
-    async def _work(self, job: dict, progress: dict) -> dict:
+    async def _work(self, job: dict, progress: dict, poke: asyncio.Event | None = None, box: dict | None = None) -> dict:
         spec = job.get("spec") or {}
         if job["kind"] == "task":
             def created(task):
@@ -184,15 +239,22 @@ class Worker:
                                   on_created=created)
         if job["kind"] == "flow":
             doc = validate(spec.get("flow"), (spec.get("flow") or {}).get("name"))
+            resume = isinstance(spec.get("nodes"), dict) and bool(spec["nodes"])
             run = Run(flow=doc["name"], title=doc.get("title", ""), inputs=spec.get("inputs") or {},
-                      id=spec.get("run_id") or job["id"], by="hq", where="worker-local")
+                      id=spec.get("run_id") or job["id"], by="hq", where="worker-local",
+                      nodes=json.loads(json.dumps(spec["nodes"])) if resume else {})
 
             def changed(r, nid):
                 progress["nodes"] = r.nodes
 
-            steps = BusSteps(self.bus, changed)
-            steps.where = "a worker (approval and remote steps run on the HQ)"
-            run = await Engine(steps, changed).run(doc, run)
+            try:
+                timeout = float(spec.get("approval_timeout") or 0) or None
+            except (TypeError, ValueError):
+                timeout = None
+            steps = WorkerSteps(self.bus, changed, progress, poke or asyncio.Event(), timeout)
+            if box is not None:
+                box["steps"] = steps
+            run = await Engine(steps, changed).run(doc, run, resume=resume)
             return {"status": run.status if run.status in ("done", "error", "cancelled") else "error",
                     "result": run.result, "error": run.error}
         raise FlowError(f"unknown job kind {job['kind']!r}")

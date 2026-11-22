@@ -9,8 +9,8 @@
     "approval_timeout": 86400,
     "agents_may_run": ["lead"],
     "tool_timeout": 3600,
+    "listen": "0.0.0.0:8200",
     "workers": {
-      "listen": "0.0.0.0:8200",
       "lease_seconds": 60,
       "max_attempts": 2,
       "allow": {

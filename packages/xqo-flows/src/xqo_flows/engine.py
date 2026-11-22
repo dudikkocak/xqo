@@ -39,6 +39,10 @@ class Run:
     where: str = "hq"  # hq | worker:<name> (a whole run sent to a worker) | worker-local
     nodes: dict = field(default_factory=dict)  # node id -> {status, title, type, started, ended, output, ...}
     job_id: str | None = None
+    trigger: dict | None = None  # {id, type} when a schedule or webhook started the run
+    resumed: int = 0  # how many times the run was resumed
+    remote: dict | None = None  # {labels, worker} when the whole run went to a worker
+    doc: dict | None = None  # the flow as it was when the run started (a resume runs the same version)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -72,7 +76,9 @@ class Engine:
         run.nodes[nid].update(kw)
         self.changed(run, nid)
 
-    async def run(self, doc: dict, run: Run) -> Run:
+    async def run(self, doc: dict, run: Run, resume: bool = False) -> Run:
+        """Run a flow. resume=True continues a run record: steps already done keep their results, every other
+        step runs again (or is skipped again) as the finished steps decide."""
         nodes = {n["id"]: n for n in doc["nodes"]}
         out_edges: dict[str, list[int]] = {n: [] for n in nodes}
         in_edges: dict[str, list[int]] = {n: [] for n in nodes}
@@ -123,9 +129,34 @@ class Engine:
 
         start = next(n for n in nodes.values() if n["type"] == "start")
         scope[start["id"]] = {"result": "", "status": "done", **inputs}
-        self._set(run, start["id"], status="done", started=run.started, ended=utcnow(), output={"inputs": inputs})
-        for t in decide(start["id"], None):
-            launch(t)
+        if resume:
+            for nid, st in run.nodes.items():
+                if nid in nodes and nid != start["id"] and st.get("status") != "done":
+                    for k in ("error", "port", "started", "ended", "output", "question", "answer", "answered_by",
+                              "task_id", "job_id", "worker"):
+                        st.pop(k, None)
+                    st["status"] = "pending"
+            run.nodes[start["id"]]["status"] = "done"
+            ready: list[str] = []
+            for nid in topo_order(nodes, doc["edges"]):
+                st = run.nodes[nid]
+                if st["status"] != "done":
+                    continue
+                if nid != start["id"]:
+                    scope[nid] = st.get("output") or {"result": "", "status": "done"}
+                    if nodes[nid]["type"] == "end":
+                        ends.append(nid)
+                    elif nodes[nid]["type"] in ("agent", "remote"):
+                        last.append(nid)
+                ready += decide(nid, st.get("port"))
+            self.changed(run, None)
+            for t in dict.fromkeys(ready):
+                if run.nodes[t]["status"] == "pending":
+                    launch(t)
+        else:
+            self._set(run, start["id"], status="done", started=run.started, ended=utcnow(), output={"inputs": inputs})
+            for t in decide(start["id"], None):
+                launch(t)
         try:
             while jobs:
                 done, _ = await asyncio.wait(set(jobs), return_when=asyncio.FIRST_COMPLETED)
@@ -210,6 +241,24 @@ class Engine:
         if t == "end":
             return {"result": render(d.get("output", ""), scope), "status": "done"}, None
         raise FlowError(f"unknown node type {t}")
+
+
+def topo_order(nodes: dict, edges: list[dict]) -> list[str]:
+    """Node ids so that every edge goes forward (flows are acyclic; model.validate checks it)."""
+    indeg = {n: 0 for n in nodes}
+    for e in edges:
+        indeg[e["targetNodeID"]] += 1
+    queue = [n for n, d in indeg.items() if d == 0]
+    out = []
+    while queue:
+        n = queue.pop(0)
+        out.append(n)
+        for e in edges:
+            if e["sourceNodeID"] == n:
+                indeg[e["targetNodeID"]] -= 1
+                if indeg[e["targetNodeID"]] == 0:
+                    queue.append(e["targetNodeID"])
+    return out
 
 
 async def wait_for(fut: asyncio.Future, timeout: float | None):

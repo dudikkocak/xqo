@@ -37,6 +37,8 @@ jobs:
             with: -e packages/xqo-docker  # its docker tests need the docker backend
           - package: xqo-feeds
             with: -e packages/xqo-schedules  # a dependency, not yet on PyPI at this version
+          - package: xqo-flows
+            with: -e packages/xqo-schedules  # schedule triggers use its cron parser
           - package: xqo-flows-runner
             with: -e packages/xqo-flows  # a dependency, not yet on PyPI at this version
     steps:

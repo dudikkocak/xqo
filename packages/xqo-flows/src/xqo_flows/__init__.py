@@ -9,7 +9,7 @@ import sys
 import time
 from pathlib import Path
 
-from fastapi import HTTPException, Query
+from fastapi import HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from xqo.api import Plugin
@@ -19,7 +19,7 @@ from .engine import FINAL, Engine, Run, Steps
 from .model import FlowError, validate
 from .service import FlowService
 from .steps import BusSteps, run_task
-from .workers import Dispatcher, create_worker_app
+from .workers import Dispatcher, create_worker_app, hook_response
 
 __all__ = ["FlowsPlugin", "FlowService", "Engine", "Run", "Steps", "BusSteps", "run_task", "validate",
            "FlowError", "Dispatcher", "FINAL"]
@@ -122,6 +122,18 @@ def _cli(a) -> None:
         elif c == "cancel":
             r = _api(url, "POST", f"/api/flows/runs/{a.run_id}/cancel")
             print(f"{r['id']}: {r['status']}")
+        elif c == "resume":
+            r = _api(url, "POST", f"/api/flows/runs/{a.run_id}/resume")
+            print(f"resumed {r['id']} ({r['flow']}): {r['status']}")
+        elif c == "triggers":
+            rows = _api(url, "GET", "/api/flows/triggers" + (f"?flow={a.name}" if a.name else ""))
+            for t in rows:
+                when = t.get("when") or t.get("path") or ""
+                print(f"{t['flow'][:20]:<20} {t['id'][:16]:<16} {t['type']:<8} {'on ' if t.get('enabled') else 'off'} "
+                      f"{when[:34]:<34} next: {(t.get('next_run') or '-')[:19]:<19} last: {t.get('last_status') or '-'}"
+                      + (f"  ({t['warning']})" if t.get("warning") else ""))
+            if not rows:
+                print("no triggers (add them in the editor's Flow panel or a flow's \"triggers\" list)")
         elif c == "approve":
             r = _api(url, "POST", f"/api/flows/runs/{a.run_id}/approve", {"node": a.node, "approve": not a.reject})
             print(f"{r['run_id']} {r['node']}: {r['answer']}")
@@ -153,7 +165,8 @@ class FlowsPlugin(Plugin):
 
     @classmethod
     def add_cli(cls, sub, url) -> list[str]:
-        p = sub.add_parser("flows", help="visual flows: list, show, import, rm, run, runs, cancel, approve, workers, token")
+        p = sub.add_parser("flows", help="visual flows: list, show, import, rm, run, runs, cancel, resume, "
+                                           "approve, triggers, workers, token")
         p.add_argument("--url", default=url, help="server address (XQO_URL)")
         s = p.add_subparsers(dest="flows_cmd")
         s.add_parser("list", help="saved flows")
@@ -176,6 +189,10 @@ class FlowsPlugin(Plugin):
         x.add_argument("--limit", type=int, default=20)
         x = s.add_parser("cancel", help="cancel a run")
         x.add_argument("run_id")
+        x = s.add_parser("resume", help="continue an interrupted, failed or cancelled run (done steps are kept)")
+        x.add_argument("run_id")
+        x = s.add_parser("triggers", help="schedule and webhook triggers, with their next and last runs")
+        x.add_argument("name", nargs="?")
         x = s.add_parser("approve", help="answer a run's approval step")
         x.add_argument("run_id")
         x.add_argument("node")
@@ -206,7 +223,7 @@ class FlowsPlugin(Plugin):
         out = ["Flows: /plugins/flows/editor.html"]
         d = self.obj.dispatcher
         if d.listen:
-            out.append(f"Flows worker API: http://{d.listen[0]}:{d.listen[1]}/flows/v1/  "
+            out.append(f"Flows worker API and webhooks: http://{d.listen[0]}:{d.listen[1]}/flows/v1/  "
                        f"({len(d.workers)} worker{'s' if len(d.workers) != 1 else ''} listed)")
         return out
 
@@ -214,7 +231,7 @@ class FlowsPlugin(Plugin):
         d = self.obj.dispatcher
         if not d.listen:
             return []
-        return [(create_worker_app(d), d.listen[0], d.listen[1])]
+        return [(create_worker_app(d, self.obj), d.listen[0], d.listen[1])]
 
     def tool_defs(self, agent) -> list[dict]:
         return [RUN_FLOW_TOOL] if self.obj.may_run(agent) else []
@@ -243,14 +260,24 @@ class FlowsPlugin(Plugin):
 
         @app.get("/api/flows/runs/{run_id}")
         async def run_get(run_id: str):
-            return _call(lambda: svc().get_run(run_id).to_dict())
+            s = svc()
+            return _call(lambda: s.view(s.get_run(run_id)))
+
+        @app.post("/api/flows/runs/{run_id}/resume")
+        async def run_resume(run_id: str):
+            s = svc()
+            _call(s.get_run, run_id)
+            try:
+                return s.view(s.resume(run_id, "user"))
+            except ValueError as e:
+                raise HTTPException(409, str(e))
 
         @app.post("/api/flows/runs/{run_id}/cancel")
         async def run_cancel(run_id: str):
             s = svc()
             _call(s.get_run, run_id)
             try:
-                return (await s.cancel(run_id)).to_dict()
+                return s.view(await s.cancel(run_id))
             except ValueError as e:
                 raise HTTPException(409, str(e))
 
@@ -261,6 +288,14 @@ class FlowsPlugin(Plugin):
         @app.get("/api/flows/approvals")
         async def approvals():
             return svc().pending_approvals()
+
+        @app.get("/api/flows/triggers")
+        async def triggers(flow: str | None = None):
+            return svc().trigger_rows(flow)
+
+        @app.post("/api/flows/hooks/{flow}/{tid}")
+        async def hook(flow: str, tid: str, request: Request):
+            return await hook_response(svc(), flow, tid, request)
 
         @app.get("/api/flows/workers")
         async def workers():
@@ -282,5 +317,6 @@ class FlowsPlugin(Plugin):
 
         @app.post("/api/flows/{name}/run")
         async def flow_run(name: str, body: RunIn):
-            run = _call(svc().start_run, name, body.inputs, "user", body.labels, body.worker, body.remote)
-            return run.to_dict()
+            s = svc()
+            run = _call(s.start_run, name, body.inputs, "user", body.labels, body.worker, body.remote)
+            return s.view(run)

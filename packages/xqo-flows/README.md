@@ -48,13 +48,54 @@ written: `hello` and `draft-review-approve`.
 | From | How |
 |---|---|
 | Editor | **▶ Run** asks for the inputs, then shows each step live: running, waiting, done, skipped or error. **Approve** and **Reject** buttons appear in the Runs tab. |
-| CLI | `xqo flows run NAME -i topic="…"` follows the run, `--no-wait` returns at once. Also: `xqo flows list / show / import FILE / rm / runs / cancel RUN / approve RUN STEP [--reject] / workers / token` |
+| CLI | `xqo flows run NAME -i topic="…"` follows the run, `--no-wait` returns at once. Also: `xqo flows list / show / import FILE / rm / runs / cancel RUN / resume RUN / approve RUN STEP [--reject] / triggers / workers / token` |
+| Triggers | Schedules and webhooks (below) |
 | API | `POST /api/flows/NAME/run` with `{"inputs": {...}}` returns the run. Read it with `GET /api/flows/runs/RUN_ID`, answer approvals with `POST /api/flows/runs/RUN_ID/approve` and `{"node": "...", "approve": true}`. |
 | Agents | Agents listed in `agents_may_run` get a `run_flow` tool, which waits for the result. A step of a flow cannot start another flow. |
 
-Each run is saved in `artifacts/flows/runs/<run_id>.json`. If the server stops during a run, the run is marked
-`interrupted` at the next start; it does not resume. While a run waits for an approval, the dashboard shows a
-toast that links to it.
+Each run is saved in `artifacts/flows/runs/<run_id>.json`. While a run waits for an approval, the dashboard shows
+a toast that links to it.
+
+**Resume.** If the server stops during a run, the run is marked `interrupted` at the next start. Press **↻ Resume**
+on the run in the editor (or `xqo flows resume RUN`, or `POST /api/flows/runs/RUN_ID/resume`) to continue it:
+steps that finished keep their results and the rest run again. Failed and cancelled runs can be resumed the same
+way. A resume runs the flow as it was when the run started, even if you edited it since. A run that went to a
+worker as a whole goes back to a worker with the same labels.
+
+## Triggers
+
+Triggers start runs without anyone pressing ▶ Run. Add them in the editor (click the canvas, then **+ schedule**
+or **+ webhook** in the Flow panel), or in the flow's `triggers` list:
+
+```json
+"triggers": [
+  {"id": "nightly", "type": "schedule", "cron": "0 2 * * 1-5", "tz": "Europe/Berlin", "inputs": {"topic": "the backlog"}},
+  {"id": "hourly", "type": "schedule", "every": "1h"},
+  {"id": "launch", "type": "schedule", "at": "2026-12-01T09:00"},
+  {"id": "issue", "type": "webhook", "secret_env": "FLOW_ISSUE_SECRET", "inputs": {"topic": "{{body.issue.title}}"}}
+]
+```
+
+| Key | Meaning |
+|---|---|
+| `cron` / `every` / `at` | Schedules: exactly one. `every` takes `30m`, `6h`, `1d`. Needs `pip install "xqo-flows[schedules]"`. |
+| `tz` | The schedule's time zone (default: the HQ's) |
+| `overlap` | `skip` (default): no new run while the trigger's last run is still going. `parallel`: start anyway. |
+| `secret_env` | Webhooks: the environment variable that holds the secret. A plaintext `secret` is refused. |
+| `trust` | Webhooks: `untrusted` (default) or `trusted`, see below |
+| `max_per_minute` | Webhooks: calls allowed per minute (default 30), then `429` |
+| `inputs` | The run's inputs. Webhook inputs can use `{{body}}`, `{{body.a.b}}` (JSON, lists by index) and `{{headers.x-github-event}}`. |
+| `enabled` | `false` keeps the trigger but turns it off |
+
+- **Schedules** keep their next and last run in `artifacts/flows/queue/triggers.json`. A run missed while the
+  server was down by less than an hour runs once at start; older misses are skipped. `xqo flows triggers` lists
+  every trigger with its next run, last run and the result.
+- **Webhooks** are `POST /flows/v1/hooks/<flow>/<trigger id>` on the public listener (`listen`, the same one
+  workers use), or `/api/flows/hooks/<flow>/<trigger id>` on the dashboard's own address. The caller sends
+  `Authorization: Bearer <secret>`, or signs the body: `X-Hub-Signature-256: sha256=<HMAC-SHA256>` (what GitHub
+  sends; `X-XQO-Signature` works the same). The answer is `202 {"run_id": ...}`; a wrong secret gets `401`.
+- Values from a webhook request reach the prompts inside `<untrusted_webhook_data>` markers, so agents treat them
+  as data, not instructions. Set `"trust": "trusted"` only for callers you control.
 
 ## Remote workers
 
@@ -65,8 +106,8 @@ Because the HQ assigns the labels, a worker cannot take jobs meant for other wor
 
 ```json
 "flows": {
+  "listen": "0.0.0.0:8200",
   "workers": {
-    "listen": "0.0.0.0:8200",
     "lease_seconds": 60,
     "max_attempts": 2,
     "allow": {"gpu-box": {"token_env": "XQO_WORKER_GPU_BOX_TOKEN", "labels": ["gpu", "linux"]}}
@@ -77,8 +118,10 @@ Because the HQ assigns the labels, a worker cannot take jobs meant for other wor
 - A **Remote** step sends one task to a worker. The rest of the flow stays on the HQ.
 - **Run the whole flow on a worker:** in the editor choose *Where: the whole flow on a worker*, or run
   `xqo flows run NAME --labels gpu` (also `--worker NAME` or `--remote`). The worker runs the flow with its own
-  agents and sends each step's state back with its heartbeats, so the editor still shows the run live. A flow
-  that has approval or remote steps cannot run on a worker as a whole.
+  agents and sends each step's state back with its heartbeats, so the editor still shows the run live.
+  **Approval steps** are still asked on the HQ: the question shows up in the editor, the dashboard toast and
+  `xqo flows approve`, and the answer goes back to the worker with its next heartbeat (every second while an
+  approval waits). Its timeout runs on the worker. A flow with Remote steps cannot run on a worker as a whole.
 - **Cancel:** cancelling a run on the HQ cancels the worker's task at its next heartbeat. If a worker stops sending
   heartbeats for `lease_seconds`, its job goes back to the queue (at most `max_attempts` times, then it fails).
   Jobs still open when the HQ restarts are cancelled.
@@ -97,14 +140,18 @@ template.
 | `agents_may_run` | `[]` | Agents that get `run_flow` (`"*"` = all agents) |
 | `tool_timeout` | 3600 | How long `run_flow` waits for the run |
 | `examples` | true | Write the example flows on the first start |
-| `workers` | none | Remote workers (above). `XQO_FLOWS_LISTEN` overrides `listen`. |
+| `listen` | none | The public listener for the worker API and webhooks, `host:port`. `XQO_FLOWS_LISTEN` overrides it; `workers.listen` still works. |
+| `workers` | none | Remote workers (above) |
 
 ## Security
 
 - The dashboard and `/api/flows` have no login, the same as the rest of xqo, so keep them on `127.0.0.1`. Only the
-  worker API (`workers.listen`) is meant to be reachable from other machines. It needs a per-worker bearer token,
-  and the token must be set in an environment variable; a plaintext `token` in the config is refused. Put the
-  worker API behind TLS (a reverse proxy) when it crosses an untrusted network.
+  public listener (`listen`: the worker API and webhooks) is meant to be reachable from other machines. Workers
+  need a per-worker bearer token and webhooks their own secret, both from environment variables; plaintext
+  tokens and secrets in the config are refused. Put the listener behind TLS (a reverse proxy) when it crosses an
+  untrusted network.
+- Webhook values are marked as untrusted data in prompts unless the trigger says `"trust": "trusted"`, and each
+  webhook is rate limited.
 - Agent steps run with the agent's normal tools, grants and budgets. Steps are `unattended` by default, which
   means questions to you take their default answer, as in scheduled runs. Untick it to make a step wait for
   you.

@@ -46,7 +46,7 @@ class HQ:
                          departments="none")
         disp = self.bus.plugins.service("flows").dispatcher
         self.servers = [uvicorn.Server(uvicorn.Config(create_app(self.bus), "127.0.0.1", self.port, log_level="warning")),
-                        uvicorn.Server(uvicorn.Config(create_worker_app(disp), "127.0.0.1", self.wport, log_level="warning"))]
+                        uvicorn.Server(uvicorn.Config(create_worker_app(disp, self.bus.plugins.service("flows")), "127.0.0.1", self.wport, log_level="warning"))]
         self.thread = threading.Thread(target=lambda: asyncio.run(self._serve()), daemon=True)
 
     async def _serve(self):
@@ -152,14 +152,96 @@ def test_whole_flow_runs_on_a_worker_and_reports_nodes(tmp_path, monkeypatch):
         assert not any(t.assignee == "planner2" for t in hq.bus.tasks.values())  # nothing ran on the HQ
 
 
-def test_whole_flow_with_an_approval_is_refused_for_workers(tmp_path, monkeypatch):
-    flow = {"nodes": [node("s", "start"), node("ok", "approval", question="?"), node("e", "end")],
-            "edges": [edge("s", "ok"), edge("ok", "e", "approve")]}
-    with HQ(tmp_path, monkeypatch) as hq:
+def approval_flow():
+    return {"nodes": [node("s", "start"), node("a", "agent", agent="builder", prompt="draft"),
+                      node("ok", "approval", question="ship {{a.status}}?"),
+                      node("b", "agent", agent="builder", prompt="ship"), node("e", "end", output="SHIPPED {{b.status}}"),
+                      node("no", "end", output="REJECTED")],
+            "edges": [edge("s", "a"), edge("a", "ok"), edge("ok", "b", "approve"), edge("b", "e"),
+                      edge("ok", "no", "reject")]}
+
+
+def wait_status(hq, rid, status, timeout=30):
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        r = hq.api("GET", f"/api/flows/runs/{rid}")
+        if r["status"] == status:
+            return r
+        time.sleep(0.1)
+    raise AssertionError(f"run is {r['status']}, not {status}: {r}")
+
+
+def test_whole_flow_with_an_approval_asks_on_the_hq(tmp_path, monkeypatch):
+    with HQ(tmp_path, monkeypatch) as hq, WorkerThread(tmp_path, hq) as w:
+        hq.api("PUT", "/api/flows/ap", approval_flow())
+        rid = hq.api("POST", "/api/flows/ap/run", {"remote": True})["id"]
+        r = wait_status(hq, rid, "waiting")
+        assert r["nodes"]["ok"]["status"] == "waiting" and r["nodes"]["ok"]["question"] == "ship done?"
+        pend = hq.api("GET", "/api/flows/approvals")
+        assert [(p["run_id"], p["node"]) for p in pend] == [(rid, "ok")]
+        hq.api("POST", f"/api/flows/runs/{rid}/approve", {"node": "ok", "approve": True})
+        r = hq.wait_run(rid)
+        assert r["status"] == "done" and r["result"] == "SHIPPED done", r
+        assert r["nodes"]["ok"]["answer"] == "approve" and r["nodes"]["no"]["status"] == "skipped"
+        assert r["where"] == "worker:gpu" and r["nodes"]["b"]["task_id"] in w.bus.tasks
+        assert hq.api("GET", "/api/flows/approvals") == []
+
+
+def test_whole_flow_approval_times_out_on_the_worker(tmp_path, monkeypatch):
+    flow = approval_flow()
+    flow["nodes"][2]["data"].update(timeout=0.5, default="reject")
+    with HQ(tmp_path, monkeypatch) as hq, WorkerThread(tmp_path, hq):
         hq.api("PUT", "/api/flows/ap", flow)
+        rid = hq.api("POST", "/api/flows/ap/run", {"remote": True})["id"]
+        r = hq.wait_run(rid)
+        assert r["status"] == "done" and r["result"] == "REJECTED", r
+        assert r["nodes"]["ok"]["answered_by"] == "timeout"
+
+
+def test_whole_flow_run_resumes_on_a_worker_keeping_done_steps(tmp_path, monkeypatch):
+    with HQ(tmp_path, monkeypatch) as hq, WorkerThread(tmp_path, hq) as w:
+        hq.api("PUT", "/api/flows/ap", approval_flow())
+        rid = hq.api("POST", "/api/flows/ap/run", {"labels": ["gpu"]})["id"]
+        wait_status(hq, rid, "waiting")
+        first = hq.api("GET", f"/api/flows/runs/{rid}")["nodes"]["a"]["task_id"]
+        r = hq.api("POST", f"/api/flows/runs/{rid}/cancel")
+        r = hq.wait_run(rid)
+        assert r["status"] == "cancelled" and r["resumable"]
+        r = hq.api("POST", f"/api/flows/runs/{rid}/resume")
+        assert r["status"] == "running" and r["resumed"] == 1 and not r["resumable"]
+        wait_status(hq, rid, "waiting")
+        hq.api("POST", f"/api/flows/runs/{rid}/approve", {"node": "ok", "approve": True})
+        r = hq.wait_run(rid)
+        assert r["status"] == "done" and r["result"] == "SHIPPED done", r
+        assert r["nodes"]["a"]["task_id"] == first  # the done step did not run again
+        assert sum(1 for t in w.bus.tasks.values() if t.prompt == "draft") == 1
+
+
+def test_webhook_on_the_public_listener(tmp_path, monkeypatch):
+    import hashlib
+    import hmac as _hmac
+    monkeypatch.setenv("HOOK_SECRET", "hk")
+    flow = {"nodes": [node("s", "start", inputs=[{"name": "msg", "default": ""}]),
+                      node("a", "agent", prompt="handle {{inputs.msg}}"), node("e", "end", output="{{inputs.msg}}")],
+            "edges": [edge("s", "a"), edge("a", "e")],
+            "triggers": [{"id": "gh", "type": "webhook", "secret_env": "HOOK_SECRET",
+                          "inputs": {"msg": "{{body.action}}"}}]}
+    with HQ(tmp_path, monkeypatch) as hq:
+        hq.api("PUT", "/api/flows/hooked", flow)
+        body = b'{"action": "opened"}'
+        sig = "sha256=" + _hmac.new(b"hk", body, hashlib.sha256).hexdigest()
+        url = f"http://127.0.0.1:{hq.wport}/flows/v1/hooks/hooked/gh"
+        req = urllib.request.Request(url, data=body, method="POST", headers={"X-Hub-Signature-256": sig})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            assert resp.status == 202
+            rid = json.loads(resp.read())["run_id"]
+        r = hq.wait_run(rid)
+        assert r["status"] == "done" and "opened" in r["result"] and "<untrusted_webhook_data>" in r["result"]
+        assert r["trigger"] == {"id": "gh", "type": "webhook"}
+        bad = urllib.request.Request(url, data=body, method="POST", headers={"X-Hub-Signature-256": "sha256=00"})
         with pytest.raises(urllib.error.HTTPError) as e:
-            hq.api("POST", "/api/flows/ap/run", {"remote": True})
-        assert e.value.code == 422
+            urllib.request.urlopen(bad, timeout=10)
+        assert e.value.code == 401
 
 
 def test_labels_no_worker_has_fail_at_once(tmp_path, monkeypatch):

@@ -70,3 +70,10 @@ aside{width:360px;border-left:1px solid var(--line);background:var(--panel);disp
 .gedit-playground{background-color:#0c0e12 !important}
 .gedit-grid-svg circle,.gedit-grid-svg path{fill:#2a2f3a;stroke:#2a2f3a}
 .gedit-selector-bounds-background{background-color:rgba(122,162,255,.08) !important}
+.triggers{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.trig{border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.trig .row{display:flex;gap:6px;align-items:center}.trig .row input,.trig .row select{flex:1;min-width:0}
+.trig .tid{font-family:ui-monospace,monospace}.chk{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--mute);white-space:nowrap}
+.trig .chk input{flex:none}
+.chk.wrap{white-space:normal}
+.msg{z-index:120}

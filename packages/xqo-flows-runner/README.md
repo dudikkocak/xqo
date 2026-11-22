@@ -18,11 +18,11 @@ pip install xqo-flows-runner     # brings xqo and xqo-flows
    ```
 
    ```json
-   "flows": {"workers": {"listen": "0.0.0.0:8200",
-                         "allow": {"gpu-box": {"token_env": "XQO_WORKER_GPU_BOX_TOKEN", "labels": ["gpu", "linux"]}}}}
+   "flows": {"listen": "0.0.0.0:8200",
+             "workers": {"allow": {"gpu-box": {"token_env": "XQO_WORKER_GPU_BOX_TOKEN", "labels": ["gpu", "linux"]}}}}
    ```
 
-   Restart `xqo serve`. Its banner shows `Flows worker API: http://0.0.0.0:8200/flows/v1/`.
+   Restart `xqo serve`. Its banner shows `Flows worker API and webhooks: http://0.0.0.0:8200/flows/v1/`.
 
 2. **On the worker machine**, give it its own `agents.json` with its agents and a `flows_worker` block:
 
@@ -54,9 +54,9 @@ template.
 | Job | Runs as |
 |---|---|
 | `task`: one Remote step | An ordinary root task on the worker, for the step's agent (empty = the worker's first agent). It is unattended unless the step says otherwise. Its result goes back to the HQ. |
-| `flow`: a whole flow | The same flow engine as the HQ, using the worker's agents. Step states go back with every heartbeat, so the HQ's editor shows the run live. |
+| `flow`: a whole flow | The same flow engine as the HQ, using the worker's agents. Step states go back with every heartbeat, so the HQ's editor shows the run live. Approval steps are asked on the HQ and the answer comes back with a heartbeat. A resumed run brings the finished steps' results, so they do not run again. |
 
-- **Heartbeats** go out every `lease_seconds / 3`. If the HQ answers "cancel" (the run was cancelled there), the
+- **Heartbeats** go out every `lease_seconds / 3`, and every second while an approval waits. If the HQ answers "cancel" (the run was cancelled there), the
   worker cancels the task and reports `cancelled`.
 - **HQ unreachable:** the worker keeps retrying with a growing pause, up to 30 s. If the outage outlasts the lease,
   the HQ gives the job to another worker. A rejected token (401/403) stops the worker.

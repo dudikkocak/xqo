@@ -24,7 +24,8 @@ type Data = Record<string, any>;
 type NodeState = { status: string; title?: string; type?: string; task_id?: string; job_id?: string; worker?: string;
   output?: Data; error?: string; question?: string; port?: string };
 type RunRec = { id: string; flow: string; status: string; started: string; ended?: string; result: string; error: string;
-  where: string; inputs: Data; nodes: Record<string, NodeState> };
+  where: string; inputs: Data; nodes: Record<string, NodeState>; resumable?: boolean; resumed?: number;
+  trigger?: { id: string; type: string } | null };
 
 /* ---------------- tiny store: node data, the shown run, the selection ---------------- */
 const store = {
@@ -199,6 +200,64 @@ function NodeForm({ id, type, agents, workers }: { id: string; type: string; age
   );
 }
 
+/* triggers: schedules and webhooks that start runs (the flow's "triggers" list; xqo_flows/triggers.py) */
+function Triggers({ list, onChange, rows }: { list: Data[]; onChange: (l: Data[]) => void; rows: Data[] }) {
+  const up = (i: number, patch: Data) => onChange(list.map((t, j) => {
+    if (j !== i) return t;
+    const n = { ...t, ...patch };
+    for (const k of Object.keys(n)) if (n[k] === undefined || n[k] === "") delete n[k];
+    return n;
+  }));
+  const add = (type: string) => {
+    const n = list.filter((t) => t.type === type).length + 1;
+    onChange([...list, type === "schedule"
+      ? { id: `schedule_${n}`, type, every: "1d", inputs: {} }
+      : { id: `webhook_${n}`, type, secret_env: "FLOW_WEBHOOK_SECRET", inputs: {} }]);
+  };
+  const inputsText = (t: Data) => Object.entries(t.inputs || {}).map(([k, v]) => `${k}=${v}`).join("\n");
+  const parseInputs = (s: string) => Object.fromEntries(s.split("\n").map((l) => l.trim()).filter(Boolean)
+    .map((l) => { const i = l.indexOf("="); return i < 0 ? [l, ""] : [l.slice(0, i).trim(), l.slice(i + 1)]; }));
+  return <div className="triggers">
+    <div className="sub">Triggers</div>
+    {!list.length && <p className="hint">Start runs on a schedule or from a webhook, without anyone pressing ▶ Run.</p>}
+    {list.map((t, i) => {
+      const row = rows.find((r) => r.id === t.id) || {};
+      const when = t.cron ? "cron" : t.at ? "at" : "every";
+      return <div key={i} className="trig">
+        <div className="row"><b>{t.type === "schedule" ? "⏰" : "🪝"}</b>
+          <input className="tid" value={t.id || ""} onChange={(e) => up(i, { id: e.target.value })} />
+          <label className="chk"><input type="checkbox" checked={t.enabled !== false} onChange={(e) => up(i, { enabled: e.target.checked ? undefined : false })} /> on</label>
+          <button className="ghost danger" title="Remove" onClick={() => onChange(list.filter((_, j) => j !== i))}>✕</button></div>
+        {t.type === "schedule" ? <>
+          <div className="row">
+            <select value={when} onChange={(e) => up(i, { cron: undefined, every: undefined, at: undefined,
+              [e.target.value]: e.target.value === "cron" ? "0 9 * * 1-5" : e.target.value === "every" ? "1d"
+                : new Date(Date.now() + 86400000).toISOString().slice(0, 10) + "T09:00" })}>
+              <option value="every">every</option><option value="cron">cron</option><option value="at">once at</option></select>
+            <input value={t[when] || ""} placeholder={when === "cron" ? "0 9 * * 1-5" : when === "every" ? "6h, 30m, 1d" : "2026-12-01T09:00"}
+              onChange={(e) => up(i, { [when]: e.target.value })} /></div>
+          <div className="row"><input value={t.tz || ""} placeholder="time zone (default: the HQ's)" onChange={(e) => up(i, { tz: e.target.value })} />
+            <select value={t.overlap || "skip"} title="when the previous run is still going" onChange={(e) => up(i, { overlap: e.target.value === "skip" ? undefined : e.target.value })}>
+              <option value="skip">skip if still running</option><option value="parallel">run in parallel</option></select></div>
+        </> : <>
+          <Field label="Secret from env variable" hint={row.path ? `POST ${row.path} with Authorization: Bearer <secret> or X-Hub-Signature-256${row.secret_set === false ? " · not set on this HQ" : ""}` : "save to see the URL"}>
+            <input value={t.secret_env || ""} onChange={(e) => up(i, { secret_env: e.target.value })} /></Field>
+          <label className="chk wrap"><input type="checkbox" checked={t.trust === "trusted"} onChange={(e) => up(i, { trust: e.target.checked ? "trusted" : undefined })} />
+            trusted caller (request values are not marked as untrusted data)</label>
+        </>}
+        <Field label="Inputs" hint={t.type === "webhook" ? "name=value per line; values may use {{body.field}}, {{headers.name}}" : "name=value per line"}>
+          <textarea key={`${i}/${list.length}`} rows={2} defaultValue={inputsText(t)} onBlur={(e) => up(i, { inputs: parseInputs(e.target.value) })} /></Field>
+        {(row.next_run || row.last_run || row.warning) && <small className="hint">
+          {row.next_run ? `next: ${new Date(row.next_run).toLocaleString()}` : ""}
+          {row.next_run && row.last_run ? " · " : ""}{row.last_run ? `last: ${new Date(row.last_run).toLocaleString()} (${row.last_status})` : ""}
+          {row.warning ? ` ⚠ ${row.warning}` : ""}</small>}
+      </div>;
+    })}
+    <div className="row"><button className="ghost" onClick={() => add("schedule")}>+ schedule</button>
+      <button className="ghost" onClick={() => add("webhook")}>+ webhook</button></div>
+  </div>;
+}
+
 function RunNodeInfo({ id }: { id: string }) {
   useStore();
   const st = store.run?.nodes?.[id];
@@ -256,7 +315,8 @@ function App() {
   const ctxRef = useRef<FreeLayoutPluginContext | null>(null);
   const [flows, setFlows] = useState<Data[]>([]);
   const [name, setName] = useState("");
-  const [meta, setMeta] = useState<Data>({ title: "", description: "" });
+  const [meta, setMeta] = useState<Data>({ title: "", description: "", triggers: [] });
+  const [trigRows, setTrigRows] = useState<Data[]>([]);
   const [agents, setAgents] = useState<Data[]>([]);
   const [workers, setWorkers] = useState<Data>({ workers: [] });
   const [runs, setRuns] = useState<Data[]>([]);
@@ -292,7 +352,7 @@ function App() {
     try {
       const doc = n === "__new__" ? newDoc() : await api(`/api/flows/${encodeURIComponent(n)}`);
       store.set(() => { store.data = {}; for (const nd of doc.nodes) store.data[nd.id] = { ...nd.data }; store.run = null; store.selected = ""; });
-      setMeta({ title: doc.title || "", description: doc.description || "" });
+      setMeta({ title: doc.title || "", description: doc.description || "", triggers: doc.triggers || [] });
       setName(n === "__new__" ? "" : n);
       setInitial({ nodes: doc.nodes.map((nd: Data, i: number) => ({ id: nd.id, type: nd.type, data: nd.data,
         meta: nd.meta?.position ? nd.meta : { position: { x: i * 340, y: 0 } } })), edges: doc.edges } as any);
@@ -301,6 +361,7 @@ function App() {
       if (n !== "__new__") {
         history.replaceState(null, "", `#${encodeURIComponent(n)}${runId ? "/" + encodeURIComponent(runId) : ""}`);
         refreshRuns(n);
+        refreshTriggers(n);
         if (runId) showRun(runId);
       }
     } catch (e: any) { say(e.message, true); }
@@ -327,9 +388,20 @@ function App() {
       markDirty(false);
       if (n !== name) { setName(n); history.replaceState(null, "", `#${encodeURIComponent(n)}`); }
       refreshFlows();
-      say(saved.warnings?.length ? `Saved. Before running: ${saved.warnings.join("; ")}` : "Saved", !!saved.warnings?.length);
+      refreshTriggers(n);
+      say(saved.warnings?.length ? `Saved, with warnings: ${saved.warnings.join("; ")}` : "Saved", !!saved.warnings?.length);
       return true;
     } catch (e: any) { say(e.message, true); return false; }
+  }
+
+  async function refreshTriggers(n = name) {
+    if (!n) { setTrigRows([]); return; }
+    try { setTrigRows(await api(`/api/flows/triggers?flow=${encodeURIComponent(n)}`)); } catch { setTrigRows([]); }
+  }
+
+  async function resume(id: string) {
+    try { await api(`/api/flows/runs/${encodeURIComponent(id)}/resume`, { method: "POST" }); showRun(id); refreshRuns(); }
+    catch (e: any) { say(e.message, true); }
   }
 
   async function refreshRuns(n = name) {
@@ -444,14 +516,17 @@ function App() {
                 <Field label="Description"><textarea rows={4} value={meta.description} onChange={(e) => { setMeta({ ...meta, description: e.target.value }); markDirty(); }} /></Field>
                 <p className="hint">Click a step to edit it. Drag from a node's right edge to another node's left edge to connect them;
                   a condition or approval connects from each named port. Several lines out of one step run in parallel.</p>
-                <p className="hint">Templates: <code>{"{{inputs.topic}}"}</code>, <code>{"{{step_id.result}}"}</code>.</p></div>)
+                <p className="hint">Templates: <code>{"{{inputs.topic}}"}</code>, <code>{"{{step_id.result}}"}</code>.</p>
+                <Triggers key={loadKey} list={meta.triggers || []} rows={trigRows} onChange={(l) => { setMeta({ ...meta, triggers: l }); markDirty(); }} /></div>)
               : <div className="runs">
                 {run_ && <div className="runcard">
                   <div className="row"><b>{run_.id}</b><span className={`xn-st st-${run_.status}`}>{run_.status}</span>
                     {!["done", "error", "cancelled", "interrupted"].includes(run_.status) &&
                       <button className="ghost danger" onClick={() => api(`/api/flows/runs/${run_.id}/cancel`, { method: "POST" }).then(() => showRun(run_.id)).catch((e) => say(e.message, true))}>Cancel</button>}
+                    {run_.resumable && <button title="Run again from where it stopped: done steps keep their results" onClick={() => resume(run_.id)}>↻ Resume</button>}
                     <button className="ghost" onClick={() => store.set(() => { store.run = null; })}>hide</button></div>
-                  <small>{run_.where !== "hq" ? `on ${run_.where} · ` : ""}{new Date(run_.started).toLocaleString()}</small>
+                  <small>{run_.where !== "hq" ? `on ${run_.where} · ` : ""}{new Date(run_.started).toLocaleString()}
+                    {run_.trigger ? ` · by ${run_.trigger.type} ${run_.trigger.id}` : ""}{run_.resumed ? ` · resumed ${run_.resumed}×` : ""}</small>
                   {waiting.map(([nid, s]) => <div key={nid} className="approve">
                     <b>✋ {s.title}</b><pre>{s.question}</pre>
                     <div className="row"><button onClick={() => api(`/api/flows/runs/${run_.id}/approve`, { method: "POST", json: { node: nid, approve: true } }).then(() => showRun(run_.id))}>Approve</button>
@@ -476,7 +551,7 @@ function App() {
       <Field label="Where">
         <select value={asking.where} onChange={(e) => setAsking({ ...asking, where: e.target.value })}>
           <option value="hq">on this HQ (remote steps still go to workers)</option>
-          <option value="worker" disabled={!(workers.workers || []).length}>the whole flow on a worker</option>
+          <option value="worker" disabled={!(workers.workers || []).length}>the whole flow on a worker (approvals are still asked here)</option>
         </select></Field>
       {asking.where === "worker" && <>
         <Field label="Labels" hint="the worker needs all of them"><input value={asking.labels} onChange={(e) => setAsking({ ...asking, labels: e.target.value })} /></Field>

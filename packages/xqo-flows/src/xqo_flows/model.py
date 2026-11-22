@@ -33,7 +33,7 @@ import re
 from typing import Any
 
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
-RESERVED = {"runs", "workers", "approvals", "new"}
+RESERVED = {"runs", "workers", "approvals", "new", "triggers", "hooks"}
 NODE_TYPES = {"start", "agent", "remote", "condition", "approval", "end"}
 OPS = {"contains", "not_contains", "equals", "not_equals", "matches", "empty", "not_empty", "gt", "lt"}
 UNARY = {"empty", "not_empty"}
@@ -188,7 +188,9 @@ def validate(doc: Any, name: str | None = None) -> dict:
         seen_edges.add((s, t, port))
         out_edges.append({**e, "sourceNodeID": s, "targetNodeID": t, **({"sourcePortID": port} if port else {})})
     _check_acyclic(by_id, out_edges)
-    return {**{k: v for k, v in doc.items() if k not in ("nodes", "edges")}, "name": name,
+    triggers = _triggers(doc.get("triggers"), {i["name"] for i in starts[0]["data"].get("inputs", [])})
+    return {**{k: v for k, v in doc.items() if k not in ("nodes", "edges", "triggers")}, "name": name,
+            "triggers": triggers,
             "title": _text(doc.get("title"), "title", 200) or name,
             "description": _text(doc.get("description"), "description", 2000),
             "nodes": out_nodes, "edges": out_edges}
@@ -218,6 +220,63 @@ def _check_acyclic(by_id: dict, edges: list[dict]) -> None:
     for n in by_id:
         if n not in state:
             visit(n)
+
+
+TRIGGER_TYPES = {"schedule", "webhook"}
+WHEN_KEYS = ("cron", "every", "at")
+
+
+def _triggers(raw: Any, input_names: set[str]) -> list[dict]:
+    """Triggers start runs without a person (triggers.py):
+      {"id": "nightly", "type": "schedule", "cron": "0 2 * * 1-5", "tz": "Europe/Berlin", "inputs": {"topic": "x"}}
+      {"id": "push", "type": "webhook", "secret_env": "FLOW_HOOK_SECRET", "inputs": {"topic": "{{body.head_commit.message}}"}}
+    Schedule keys: one of cron / every ("6h") / at ("2026-12-01T09:00"), tz, overlap ("skip" | "parallel").
+    Webhook keys: secret_env (required), trust ("untrusted" | "trusted"), max_per_minute.
+    Both: enabled (default true), inputs (name -> text; webhook inputs may use {{body.path}} / {{headers.name}})."""
+    if raw in (None, []):
+        return []
+    if not isinstance(raw, list):
+        raise FlowError("triggers must be a list")
+    out, ids = [], set()
+    for i, t in enumerate(raw):
+        if not isinstance(t, dict):
+            raise FlowError(f"trigger {i} must be an object")
+        tid = t.get("id") or f"{t.get('type', 'trigger')}_{i}"
+        if not isinstance(tid, str) or not re.match(r"^[A-Za-z0-9_\-]{1,64}$", tid) or tid in ids:
+            raise FlowError(f"trigger {i}: id must be unique, 1-64 characters: letters, digits, '-', '_'")
+        ids.add(tid)
+        typ = t.get("type")
+        if typ not in TRIGGER_TYPES:
+            raise FlowError(f"trigger {tid}: type must be schedule or webhook")
+        inputs = t.get("inputs") or {}
+        if not isinstance(inputs, dict) or not all(isinstance(v, str) for v in inputs.values()):
+            raise FlowError(f"trigger {tid}: inputs must map input names to text")
+        extra = set(inputs) - input_names
+        if extra:
+            raise FlowError(f"trigger {tid}: the start node has no input(s) {', '.join(sorted(extra))}")
+        d = {**t, "id": tid, "type": typ, "enabled": t.get("enabled", True) is not False, "inputs": inputs}
+        if typ == "schedule":
+            given = [k for k in WHEN_KEYS if t.get(k) not in (None, "")]
+            if len(given) != 1:
+                raise FlowError(f"trigger {tid}: give exactly one of cron, every or at")
+            if t.get("overlap", "skip") not in ("skip", "parallel"):
+                raise FlowError(f"trigger {tid}: overlap must be skip or parallel")
+            for k in WHEN_KEYS:
+                if k not in given:
+                    d.pop(k, None)
+        else:
+            env = t.get("secret_env")
+            if not isinstance(env, str) or not re.match(r"^[A-Za-z_][A-Za-z0-9_]{0,99}$", env):
+                raise FlowError(f"trigger {tid}: a webhook needs secret_env, the environment variable with its secret")
+            if t.get("secret"):
+                raise FlowError(f"trigger {tid}: put the secret in an environment variable and name it with secret_env")
+            if t.get("trust", "untrusted") not in ("untrusted", "trusted"):
+                raise FlowError(f"trigger {tid}: trust must be untrusted or trusted")
+            mpm = t.get("max_per_minute", 30)
+            if isinstance(mpm, bool) or not isinstance(mpm, int) or not 1 <= mpm <= 10000:
+                raise FlowError(f"trigger {tid}: max_per_minute must be a whole number from 1 to 10000")
+        out.append(d)
+    return out
 
 
 def has_types(doc: dict, *types: str) -> list[str]:

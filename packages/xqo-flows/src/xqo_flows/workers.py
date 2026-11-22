@@ -3,9 +3,11 @@
 Workers connect out to the HQ (nothing listens on the worker), so they work behind NAT and firewalls:
 
     POST /flows/v1/next                  long poll: the next job for this worker, or {"job": null}
-    POST /flows/v1/jobs/{id}/heartbeat   keeps the job's lease; carries progress; answers {"cancel": bool}
+    POST /flows/v1/jobs/{id}/heartbeat   keeps the job's lease; carries progress; answers {"cancel": bool,
+                                         "answers": {approval node: "approve"|"reject"}}
     POST /flows/v1/jobs/{id}/result      {"status": "done"|"error"|"cancelled", "result", "error", "task_id"}
     GET  /flows/v1/ping                  who am I, which labels
+    POST /flows/v1/hooks/{flow}/{trigger} a webhook trigger (no worker token: the trigger's own secret, triggers.py)
 
 Every request carries ``X-XQO-Worker: <name>`` and ``Authorization: Bearer <token>``. Workers are listed on the
 HQ, each with its own token (from an environment variable) and its labels; the HQ decides which labels a worker
@@ -82,6 +84,7 @@ class Job:
     run_id: str = ""
     node_id: str = ""
     ended: str = ""
+    answers: dict = field(default_factory=dict)  # approval node id -> "approve" | "reject" (whole-flow jobs)
 
     def public(self) -> dict:
         d = asdict(self)
@@ -305,7 +308,7 @@ class Dispatcher:
                 self._progress(job, progress)
             except Exception:  # progress is informational; a bad report never fails the job
                 pass
-        return {"cancel": job.cancel}
+        return {"cancel": job.cancel, "answers": job.answers}
 
     def result(self, w: WorkerCfg, job_id: str, body: dict) -> dict:
         self._touch(w)
@@ -323,7 +326,8 @@ class Dispatcher:
         return {"ok": True}
 
 
-def create_worker_app(disp: Dispatcher) -> FastAPI:
+def create_worker_app(disp: Dispatcher, service=None) -> FastAPI:
+    """The public listener: the worker API, plus webhook triggers when `service` (a FlowService) is given."""
     app = FastAPI(title="xqo flows worker API", docs_url=None, redoc_url=None, openapi_url=None)
 
     def auth(name: str | None, authorization: str | None) -> WorkerCfg:
@@ -374,4 +378,34 @@ def create_worker_app(disp: Dispatcher) -> FastAPI:
         w = auth(x_xqo_worker, authorization)
         return disp.result(w, job_id, await body(request))
 
+    if service is not None:
+        @app.post("/flows/v1/hooks/{flow}/{tid}")
+        async def hook(flow: str, tid: str, request: Request):
+            return await hook_response(service, flow, tid, request)
+
     return app
+
+
+async def hook_response(service, flow: str, tid: str, request: Request):
+    """Shared by the public listener and the dashboard route: 202 {run_id} or an error status."""
+    from .triggers import MAX_HOOK_BODY
+    raw = b""
+    async for chunk in request.stream():
+        raw += chunk
+        if len(raw) > MAX_HOOK_BODY:
+            raise HTTPException(413, "body too large")
+    headers = {k.lower(): v for k, v in request.headers.items()}
+    try:
+        run = service.hook(flow, tid, raw, headers)
+    except KeyError:
+        raise HTTPException(404, "no such webhook")
+    except PermissionError as e:
+        raise HTTPException(401, str(e))
+    except OverflowError as e:
+        raise HTTPException(429, str(e) or "too many requests")
+    except FlowError as e:
+        raise HTTPException(422, str(e))
+    from fastapi.responses import JSONResponse
+    if run is None:
+        return JSONResponse({"run_id": None, "skipped": True}, status_code=202)
+    return JSONResponse({"run_id": run.id, "status": run.status}, status_code=202)

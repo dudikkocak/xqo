@@ -30,12 +30,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [xqo-sqlite, xqo-docker, xqo-agency, xqo-toolchains, xqo-schedules, xqo-feeds, xqo-channels, xqo-peering]
+        package: [xqo-sqlite, xqo-docker, xqo-agency, xqo-toolchains, xqo-schedules, xqo-feeds, xqo-channels, xqo-peering,
+                  xqo-flows, xqo-flows-runner]
         include:
           - package: xqo-toolchains
             with: -e packages/xqo-docker  # its docker tests need the docker backend
           - package: xqo-feeds
             with: -e packages/xqo-schedules  # a dependency, not yet on PyPI at this version
+          - package: xqo-flows-runner
+            with: -e packages/xqo-flows  # a dependency, not yet on PyPI at this version
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
@@ -72,6 +75,21 @@ jobs:
       - name: Tests (they skip without XQO_TEST_PG_DSN, so check that none did)
         run: uv run --no-project python -m pytest packages/xqo-postgres/tests -q --timeout 120 -rs | tee out.txt && ! grep -q skipped out.txt
 
+  flows-editor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Rebuild the FlowGram editor and check the committed bundle is up to date
+        working-directory: packages/xqo-flows/editor
+        run: |
+          npm ci --no-audit --no-fund
+          npx tsc -p .
+          npm run build
+          git diff --exit-code -- ../src/xqo_flows/static/ || (echo "editor.js is stale: run npm run build in packages/xqo-flows/editor"; exit 1)
+
   wheel:
     runs-on: ubuntu-latest
     steps:
@@ -92,4 +110,4 @@ jobs:
           uv pip install --python /tmp/w/bin/python dist/*.whl
           /tmp/w/bin/python -c "import xqo.api as a; print(a.__version__, a.API_VERSION)"
           /tmp/w/bin/xqo --help > /dev/null
-          /tmp/w/bin/python -c "import json, pathlib, tempfile; from xqo.config import build; d = pathlib.Path(tempfile.mkdtemp()); c = d / 'agents.json'; c.write_text(json.dumps({'agents': [{'name': 'p', 'skills': ['planning']}]})); s = build(c, d / 'a', str(d / 'l' / 'e.jsonl'), mock=True, departments='none').plugins.states; bad = [n for n in ('sqlite', 'postgres', 'docker', 'toolchains', 'agency', 'schedules', 'feeds', 'channels', 'peering') if s[n].state not in ('active', 'inactive')]; assert not bad, bad"
+          /tmp/w/bin/python -c "import json, pathlib, tempfile; from xqo.config import build; d = pathlib.Path(tempfile.mkdtemp()); c = d / 'agents.json'; c.write_text(json.dumps({'agents': [{'name': 'p', 'skills': ['planning']}]})); s = build(c, d / 'a', str(d / 'l' / 'e.jsonl'), mock=True, departments='none').plugins.states; bad = [n for n in ('sqlite', 'postgres', 'docker', 'toolchains', 'agency', 'schedules', 'feeds', 'channels', 'peering', 'flows', 'flows_runner') if s[n].state not in ('active', 'inactive')]; assert not bad, bad"

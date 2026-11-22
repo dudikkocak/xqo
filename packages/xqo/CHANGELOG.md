@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- New plugin package **`xqo-flows`**: a visual flow editor (FlowGram.AI free-layout, MIT, built into the
+  package) at `/plugins/flows/editor.html`, with agent, remote, condition, approval and end steps. Steps run in
+  parallel where lines fan out and joins wait only for live branches. Run state shows live on the canvas. Flows can
+  be run from the editor, the CLI (`xqo flows`), the API (`/api/flows`) or an agent's `run_flow` tool. Turn it on
+  with `"flows": {}`. Backups keep `artifacts/flows/`.
+- New plugin package **`xqo-flows-runner`**: `xqo worker`, a headless worker that polls an HQ's flows worker API
+  (`flows.workers.listen`, a bearer token per worker, labels assigned by the HQ). It runs single remote steps or
+  whole flows with its own agents, with leases, heartbeats and cancel.
+- New extras `xqo[flows]` and `xqo[flows-runner]`; `xqo[all]` includes them.
+
 ## 3.1.1
 
 - Releases upload to PyPI with Trusted Publishing (OIDC) instead of a stored API token.

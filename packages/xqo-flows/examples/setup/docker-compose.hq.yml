@@ -1,0 +1,10 @@
+# The HQ with flows, next to packages/xqo/docker-compose.yml (run from packages/xqo):
+#   XQO_PLUGINS="xqo-flows" docker compose -f docker-compose.yml -f ../xqo-flows/examples/setup/docker-compose.hq.yml up -d --build
+# The dashboard stays on 127.0.0.1; only the worker API (8200) is published for the workers.
+services:
+  xqo:
+    ports:
+      - "${XQO_WORKER_API_BIND:-0.0.0.0}:8200:8200"
+    environment:
+      - XQO_WORKER_GPU_BOX_TOKEN
+      - XQO_WORKER_MAC_MINI_TOKEN

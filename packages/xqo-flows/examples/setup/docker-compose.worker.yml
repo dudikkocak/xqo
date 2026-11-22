@@ -1,0 +1,23 @@
+# A headless worker on another machine. Put worker.agents.json in ./data/agents.json and the token in .env, then
+# (from packages/xqo, which has the Dockerfile):
+#   XQO_PLUGINS="xqo-flows-runner" docker compose -f ../xqo-flows/examples/setup/docker-compose.worker.yml up -d --build
+# Nothing is published: the worker only connects out to the HQ's worker API.
+services:
+  worker:
+    image: xqo:${XQO_VERSION:-3.1.1}
+    build:
+      context: ${XQO_SRC:-.}
+      args:
+        VERSION: ${XQO_VERSION:-3.1.1}
+        WITH_NODE: ${WITH_NODE:-0}
+        PLUGINS: ${XQO_PLUGINS:-xqo-flows-runner}
+    restart: unless-stopped
+    command: ["xqo", "--config", "/data/agents.json", "worker"]
+    environment:
+      - ANTHROPIC_API_KEY
+      - CLAUDE_CODE_OAUTH_TOKEN
+      - XQO_WORKER_TOKEN
+    volumes:
+      - ./data:/data
+    healthcheck:
+      disable: true   # the image's check calls the dashboard, which a worker does not run

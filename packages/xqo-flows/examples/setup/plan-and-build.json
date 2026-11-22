@@ -1,0 +1,30 @@
+{
+  "name": "plan-and-build",
+  "title": "Plan on the HQ, build on the GPU box",
+  "description": "The HQ's lead plans; a worker with the gpu label builds and tests; you approve before the write-up.",
+  "nodes": [
+    {"id": "start_0", "type": "start", "meta": {"position": {"x": 0, "y": 0}},
+     "data": {"title": "Start", "inputs": [{"name": "what", "default": "a CSV parser with tests"}]}},
+    {"id": "plan", "type": "agent", "meta": {"position": {"x": 340, "y": 0}},
+     "data": {"title": "Plan", "agent": "lead", "prompt": "Plan {{inputs.what}} in at most 5 steps."}},
+    {"id": "build", "type": "remote", "meta": {"position": {"x": 680, "y": 0}},
+     "data": {"title": "Build on GPU box", "labels": ["gpu"], "agent": "builder", "timeout": 3600,
+              "prompt": "Build {{inputs.what}} following this plan, run the tests, report the result:\n\n{{plan.result}}"}},
+    {"id": "ok", "type": "approval", "meta": {"position": {"x": 1020, "y": 0}},
+     "data": {"title": "Looks good?", "question": "The worker reports:\n\n{{build.result}}\n\nWrite it up?", "default": "reject"}},
+    {"id": "doc", "type": "agent", "meta": {"position": {"x": 1360, "y": -80}},
+     "data": {"title": "Write-up", "agent": "scribe", "prompt": "Write a short changelog entry for:\n\n{{build.result}}"}},
+    {"id": "end_ok", "type": "end", "meta": {"position": {"x": 1700, "y": -80}},
+     "data": {"title": "Done", "output": "{{doc.result}}"}},
+    {"id": "end_no", "type": "end", "meta": {"position": {"x": 1360, "y": 120}},
+     "data": {"title": "Stopped", "output": "Not written up. Worker result:\n\n{{build.result}}"}}
+  ],
+  "edges": [
+    {"sourceNodeID": "start_0", "targetNodeID": "plan"},
+    {"sourceNodeID": "plan", "targetNodeID": "build"},
+    {"sourceNodeID": "build", "targetNodeID": "ok"},
+    {"sourceNodeID": "ok", "targetNodeID": "doc", "sourcePortID": "approve"},
+    {"sourceNodeID": "ok", "targetNodeID": "end_no", "sourcePortID": "reject"},
+    {"sourceNodeID": "doc", "targetNodeID": "end_ok"}
+  ]
+}

@@ -18,6 +18,16 @@ services:
       # xqo re-reads CLAUDE_CODE_OAUTH_TOKEN from .env before every Claude Code session (it wins over the value
       # above), so a renewed token in .env works for the next chat without a restart (docs/CLAUDE-SDK.md)
       - XQO_OAUTH_TOKEN_FILE=/run/xqo/config/.env
+      # optional login (docs/AUTH.md): XQO_AUTH=google,telegram plus an allowlist; then the port may leave 127.0.0.1
+      # behind an HTTPS reverse proxy. Off when XQO_AUTH is empty and agents.json has no "auth" block.
+      - XQO_AUTH
+      - XQO_AUTH_ALLOW
+      - XQO_PUBLIC_URL
+      - XQO_SESSION_SECRET
+      - XQO_API_TOKEN
+      - XQO_GOOGLE_CLIENT_ID
+      - XQO_GOOGLE_CLIENT_SECRET
+      - XQO_TELEGRAM_LOGIN_BOT_TOKEN
       # host path of ./data, so the dashboard's 📁 folder links show and open the real folders
       - XQO_PATH_MAP=/data=${PWD}/data
     volumes:

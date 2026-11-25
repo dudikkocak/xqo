@@ -35,6 +35,7 @@ class OfficeHQ:
     name: str
     url: str        # where this server reaches that dashboard (the relay)
     link: str = ""  # where the browser opens it ("open in dashboard"); default url
+    token_env: str = ""  # environment variable with that dashboard's API token, when it has login on (auth.py)
 
 
 @dataclass
@@ -76,10 +77,13 @@ class OfficeConfig:
             link = str(h.get("link") or "").rstrip("/")
             if link and urlsplit(link).scheme not in ("http", "https"):
                 raise ValueError(f"office.hqs[{h['name']}].link must be an http(s) address")
-            unknown = set(h) - {"name", "url", "link"}
+            token_env = str(h.get("token_env") or "")
+            if token_env and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", token_env):
+                raise ValueError(f"office.hqs[{h['name']}].token_env must be an environment variable name")
+            unknown = set(h) - {"name", "url", "link", "token_env"}
             if unknown:
                 raise ValueError(f"office.hqs[{h['name']}]: unknown setting(s) {', '.join(sorted(unknown))}")
-            hqs.append(OfficeHQ(h["name"], url, link or url))
+            hqs.append(OfficeHQ(h["name"], url, link or url, token_env))
         views = d.get("views", list(VIEWS))
         if not isinstance(views, list) or not views or any(v not in VIEWS for v in views) or len(set(views)) != len(views):
             raise ValueError(f"office.views must be a non-empty list of {', '.join(VIEWS)} (first = default)")
@@ -164,6 +168,13 @@ def relay_target(cfg: OfficeConfig, hq: str, path: str, method: str) -> str:
     if not allowed or not allowed.match(path):
         raise PermissionError(f"the office relay does not forward {method} /api/{path}")
     return f"{h.url}/api/{quote(path, safe='/:')}"
+
+
+def relay_headers(cfg: OfficeConfig, hq: str) -> dict:
+    """Authorization for another HQ that has login on: its token_env, else this server's own XQO_API_TOKEN."""
+    h = cfg.find(hq)
+    token = os.getenv(h.token_env) if h and h.token_env else os.getenv("XQO_API_TOKEN")
+    return {"Authorization": f"Bearer {token}"} if token else {}
 
 
 # ---------------- the edited layout: <artifacts>/office.json and <artifacts>/office-assets/ ----------------

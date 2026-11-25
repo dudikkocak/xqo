@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="same-origin">
+<title>Sign in · {{HQ_NAME}}</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%237aa2ff'/%3E%3C/svg%3E">
+<style>
+:root{color-scheme:dark;--bg:#0f1115;--panel:#171a21;--line:#2a2f3a;--text:#e6e8ee;--mute:#8b93a7;--accent:#7aa2ff;--error:#fc8181;--ok:#68d391}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;
+  font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text)}
+.card{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:28px 24px}
+h1{font-size:18px;margin:0 0 4px}p.sub{margin:0 0 20px;color:var(--mute);font-size:13px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 12px;margin:0 0 10px;border-radius:8px;
+  border:1px solid var(--line);background:#1f2430;color:var(--text);font:inherit;font-weight:600;cursor:pointer;text-decoration:none}
+.btn:hover{border-color:var(--accent)}.btn[disabled]{opacity:.6;cursor:default}
+.or{display:flex;align-items:center;gap:8px;color:var(--mute);font-size:12px;margin:14px 0}.or:before,.or:after{content:"";flex:1;border-top:1px solid var(--line)}
+input{width:100%;padding:9px 10px;margin:0 0 10px;border-radius:8px;border:1px solid var(--line);background:#12151b;color:var(--text);font:inherit}
+.msg{font-size:13px;margin:12px 0 0;min-height:1em}.msg.err{color:var(--error)}.msg.ok{color:var(--ok)}
+.tg{display:none;margin:4px 0 10px;padding:10px;border:1px dashed var(--line);border-radius:8px;font-size:13px;color:var(--mute)}
+.tg a{color:var(--accent);word-break:break-all}
+</style>
+</head>
+<body>
+<main class="card">
+  <h1>{{HQ_NAME}}</h1>
+  <p class="sub">Sign in to open the dashboard.</p>
+  <div id="providers"></div>
+  <div class="tg" id="tgbox"></div>
+  <p class="msg" id="msg" role="status"></p>
+</main>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const next = q.get("next") || "/";
+  const box = document.getElementById("providers"), msg = document.getElementById("msg"), tgbox = document.getElementById("tgbox");
+  const say = (t, cls) => { msg.textContent = t || ""; msg.className = "msg " + (cls || ""); };
+  if (q.get("error")) say(q.get("error"), "err");
+  const button = (label, onclick) => { const b = document.createElement("button"); b.className = "btn"; b.type = "button";
+    b.textContent = label; b.onclick = onclick; box.appendChild(b); return b; };
+
+  function telegram(btn) {
+    btn.disabled = true; say("");
+    fetch("/auth/telegram/start", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({next})}).then(r => r.json().then(d => [r, d])).then(([r, d]) => {
+      if (!r.ok) throw new Error(d.detail || r.status);
+      tgbox.style.display = "block";
+      tgbox.innerHTML = "";
+      const a = document.createElement("a"); a.href = d.url; a.target = "_blank"; a.rel = "noopener"; a.textContent = d.url;
+      tgbox.append("Open this link in Telegram, tap Start, then Approve:", document.createElement("br"), a);
+      window.open(d.url, "_blank", "noopener");
+      const until = Date.now() + d.expires_in * 1000;
+      const poll = () => fetch("/auth/telegram/status").then(r => r.json()).then(s => {
+        if (s.status === "approved") { say("Signed in.", "ok"); location.replace(s.next || "/"); return; }
+        if (s.status === "pending" && Date.now() < until) { if (s.error) say("Telegram: " + s.error, "err"); setTimeout(poll, 1500); return; }
+        btn.disabled = false; tgbox.style.display = "none";
+        say(s.status === "denied" ? (s.reason || "Sign-in was denied.") : "The link expired. Try again.", "err");
+      }).catch(() => setTimeout(poll, 3000));
+      poll();
+    }).catch(e => { btn.disabled = false; say(String(e.message || e), "err"); });
+  }
+
+  function tokenForm() {
+    const f = document.createElement("form");
+    const i = document.createElement("input"); i.type = "password"; i.placeholder = "API token"; i.autocomplete = "current-password";
+    const b = document.createElement("button"); b.className = "btn"; b.type = "submit"; b.textContent = "Sign in with token";
+    f.append(i, b); box.appendChild(f);
+    f.onsubmit = ev => { ev.preventDefault(); say("");
+      fetch("/auth/token", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({token: i.value, next})})
+        .then(r => r.json().then(d => [r, d])).then(([r, d]) => { if (!r.ok) throw new Error(d.detail || r.status); location.replace(d.next || "/"); })
+        .catch(e => say(String(e.message || e), "err")); };
+  }
+
+  fetch("/api/auth/me").then(r => r.json()).then(me => {
+    if (!me.enabled || me.user) { location.replace(next); return; }
+    const p = me.providers;
+    if (p.includes("google")) button("Sign in with Google", () => location.href = "/auth/google/start?next=" + encodeURIComponent(next));
+    if (p.includes("telegram")) { const b = button("Sign in with Telegram", () => telegram(b)); }
+    if (p.includes("token")) { if (p.length > 1) { const o = document.createElement("div"); o.className = "or"; o.textContent = "or"; box.appendChild(o); } tokenForm(); }
+  }).catch(() => say("The server is not answering.", "err"));
+})();
+</script>
+</body>
+</html>

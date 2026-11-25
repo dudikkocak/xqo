@@ -408,7 +408,7 @@ The office is laid out automatically: a room per department (a desk per agent, a
 ## Security notes
 
 - Isolation between instances comes from separate processes or containers, data dirs and keys. Peering is the only channel between them, and it is opt-in on both sides.
-- The dashboard has no login. Keep it on `127.0.0.1`, and expose only the peer listener.
+- The dashboard has no login unless you turn it on ([AUTH.md](AUTH.md)). Without it, keep it on `127.0.0.1` and expose only the peer listener.
 - Like everything on the dashboard, editing the office and uploading models needs no login: whoever can open the dashboard can change them. Uploads are checked to be `.glb` / PNG / JPEG files and are served with `nosniff` and a sandbox policy. The office relay never forwards edits to another HQ.
 - The office relay (`/api/office/hq/...`) only reaches the dashboards listed in `office.hqs`, and only forwards the calls the Office view makes. It adds no login of its own, so the same rule applies: whoever can open this dashboard can act on those HQs through it.
 - Tokens are read from the environment and are never written to config, logs or events.

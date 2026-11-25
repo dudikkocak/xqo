@@ -527,6 +527,13 @@ def main() -> None:
 
         bus.office_edit = a.edit or bool(getattr(getattr(bus, "office", None), "edit", False))  # --edit or "office": {"edit": true}
         print(f"Monitor: http://{a.host}:{a.port}" + ("  (office editing on)" if bus.office_edit else ""))
+        auth = getattr(bus, "auth", None)
+        if auth and auth.enabled:
+            print(f"Login: {', '.join(auth.cfg.providers)}; {len(auth.cfg.allow)} allowlist entr"
+                  f"{'y' if len(auth.cfg.allow) == 1 else 'ies'}" + (f"; {auth.cfg.public_url}" if auth.cfg.public_url else ""))
+        elif a.host not in ("127.0.0.1", "localhost", "::1") and not Path("/.dockerenv").exists():  # Docker: the port mapping decides
+            print(f"warning: the dashboard listens on {a.host} with no login: anyone who can reach this port can run "
+                  "agents and code. Turn on \"auth\" (docs/AUTH.md) or keep it on 127.0.0.1.", file=sys.stderr)
         side = []
         for p in bus.plugins.active():
             try:

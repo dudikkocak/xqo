@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **Optional login** (off by default, [docs/AUTH.md](docs/AUTH.md)): Google sign-in (OpenID Connect with PKCE) and
+  Telegram (a bot link you approve in Telegram, no public domain needed), an allowlist of emails, `*@domain` and
+  `tg:<id>`, and an API token (`XQO_API_TOKEN`) for scripts and the `xqo` command, which sends it by itself. A signed-in
+  person can link their Google and Telegram accounts so either signs in as them. The middleware guards every page,
+  API route and the event stream; channel webhooks and feed pushes keep their own secrets; `/api/health` answers
+  `{"ok": true}` without a sign-in. Cookie requests that change something must come from the same site.
+- `office.hqs` entries take `token_env`, sent to that HQ as a bearer token by the office relay.
+- `xqo serve` warns when it listens beyond localhost without login (not inside Docker, where the port mapping decides).
+
 ## 3.1.1
 
 - Releases upload to PyPI with Trusted Publishing (OIDC) instead of a stored API token.

@@ -122,6 +122,9 @@ class OfficePlugin(Plugin):
             except PermissionError as e:
                 raise HTTPException(403, str(e))
 
+        def relay_auth(hq: str) -> dict:
+            return office_view.relay_headers(getattr(bus, "office", None) or office_view.OfficeConfig(), hq)
+
         @app.get("/api/office/hq/{hq}/events")
         async def office_events(hq: str):
             """Another HQ's live events, relayed for the planners world."""
@@ -130,7 +133,7 @@ class OfficePlugin(Plugin):
             async def gen():
                 try:
                     async with httpx.AsyncClient(timeout=httpx.Timeout(10, read=60)) as client:
-                        async with client.stream("GET", url) as r:
+                        async with client.stream("GET", url, headers=relay_auth(hq)) as r:
                             if r.status_code != 200:
                                 raise httpx.HTTPError(f"HTTP {r.status_code}")
                             yield "event: relay\ndata: {\"up\": true}\n\n"
@@ -152,7 +155,8 @@ class OfficePlugin(Plugin):
             try:
                 async with httpx.AsyncClient(timeout=20) as client:
                     r = await client.request(request.method, url, params=request.query_params, content=body,
-                                             headers={"Content-Type": "application/json"} if body else None)
+                                             headers={**({"Content-Type": "application/json"} if body else {}),
+                                                      **relay_auth(hq)})
             except httpx.HTTPError as e:
                 raise HTTPException(502, f"{hq} is not reachable: {type(e).__name__}")
             return Response(r.content, status_code=r.status_code,

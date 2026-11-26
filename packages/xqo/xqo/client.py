@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -11,7 +12,9 @@ def api(url: str, method: str, path: str, body: dict | None = None) -> dict | li
     """Call a running server. Raises ConnectionError when nothing answers, RuntimeError on API errors."""
     req = urllib.request.Request(url.rstrip("/") + path, method=method,
                                  data=json.dumps(body).encode() if body is not None else None,
-                                 headers={"Content-Type": "application/json"})
+                                 headers={"Content-Type": "application/json",
+                                          **({"Authorization": f"Bearer {os.environ['XQO_API_TOKEN']}"}
+                                             if os.getenv("XQO_API_TOKEN") else {})})
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             return json.loads(r.read() or b"null")

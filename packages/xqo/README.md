@@ -93,3 +93,4 @@ Events go to `logs/events.jsonl`, one line per event (`"storage": {"backend": "j
 
 - [docs/REFERENCE.md](docs/REFERENCE.md): every feature in detail (commands are `xqo …`)
 - [docs/SETUP.md](docs/SETUP.md), [docs/OPERATIONS.md](docs/OPERATIONS.md): install, upgrade, backup
+- [docs/AUTH.md](docs/AUTH.md): optional login with Google or Telegram, the API token, remote access

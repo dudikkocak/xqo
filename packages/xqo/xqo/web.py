@@ -14,6 +14,8 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from . import attachments as attachment_limits
+from . import auth_web
+from .auth import Auth, AuthConfig
 from .attachments import validate
 from .avatars import public as avatar_public
 from .bus import Draining, MessageBus
@@ -146,11 +148,14 @@ def create_app(bus: MessageBus) -> FastAPI:
             await plugins.start()
         yield
         purger.cancel()
+        if auth.telegram:
+            await auth.telegram.stop()
         if plugins:
             await plugins.stop()
         await bus.mcp.stop()
 
     app = FastAPI(title="xqo", lifespan=lifespan)
+    auth = getattr(bus, "auth", None) or Auth(AuthConfig(), Path("."))  # auth.py: off unless "auth" is configured
 
     @app.exception_handler(Draining)
     async def draining(_request, exc: Draining):
@@ -161,6 +166,8 @@ def create_app(bus: MessageBus) -> FastAPI:
 
     def named(page: str) -> str:  # the HQ name ("name" in agents.json) in the page's <title> and header
         return named_page(STATIC / page, bus)
+
+    auth_web.install(app, auth, named)  # login middleware + /login, /auth/* (a pass-through when off)
 
     @app.get("/", response_class=HTMLResponse)
     async def index():

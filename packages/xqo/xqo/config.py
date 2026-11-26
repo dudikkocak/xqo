@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .agent import Agent
 from .artifacts import ArtifactStore
+from .auth import Auth, AuthConfig
 from .attachments import AttachmentStore
 from .avatars import folder_for, from_folder, resolve_avatar
 from .compaction import CompactionConfig
@@ -215,6 +216,7 @@ def build(config_path: str | Path = "agents.json", artifacts_dir: str = "artifac
     bus.compaction = CompactionConfig.from_dict(cfg.get("compaction"))
     bus.folders = FolderConfig.from_dict(cfg.get("folders"))
     bus.hq_name = hq_name(cfg.get("name"))
+    bus.auth = Auth(AuthConfig.from_dict(cfg.get("auth")), store.root.parent / "auth", bus.hq_name)  # auth.py
     bus.usage_total = UsageTotals(store.root, bus.tasks.values())
     if "attention_timeout" in cfg and "XQO_ATTENTION_TIMEOUT" not in os.environ:
         bus.attention.timeout = float(cfg["attention_timeout"])

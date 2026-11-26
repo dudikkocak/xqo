@@ -73,7 +73,7 @@ $("prompt").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.ctrlKey||e.met
   const es=new EventSource("/api/events");
   es.onopen=async()=>{$("dot").classList.add("on");$("status").textContent="live";
     for(const e of await (await fetch("/api/history")).json())onEvent(e,false);loadAttention();loadAlerts();loadUsage()};  // backfill after reconnect
-  es.onerror=()=>{$("dot").classList.remove("on");$("status").textContent="reconnecting…"};
+  es.onerror=()=>{$("dot").classList.remove("on");$("status").textContent="reconnecting…";if(window.xqoAuthCheck)window.xqoAuthCheck().catch(()=>{})};  // signed out: to /login
   es.onmessage=m=>onEvent(JSON.parse(m.data),true);
   const qt=new URLSearchParams(location.search).get("task");  // links from the office view: /?task=<id>
   if(qt){history.replaceState(null,"",location.pathname);selectTask(qt)}

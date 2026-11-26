@@ -222,6 +222,8 @@ The office is laid out automatically: a room per department (a desk per agent, a
 |---|---|
 | `GET /` | Dashboard |
 | `GET /api/events` | SSE live stream |
+| `GET /login`, `GET /api/auth/me`, `POST /auth/logout`, `POST /api/auth/unlink` | Optional login ([AUTH.md](AUTH.md)): the sign-in page, who is signed in (`enabled`, `providers`, `user` with linked identities), sign out (`{"everywhere": true}` ends every session), unlink an account |
+| `GET /auth/google/start\|callback`, `POST /auth/telegram/start`, `GET /auth/telegram/status`, `POST /auth/token` | Sign-in flows: Google, the Telegram bot link, the API token form |
 | `GET /office[?world=planners\|?hq=<name>]` | Office view: this HQ, the planners of all HQs, or another HQ's office |
 | `GET /api/office` | This HQ's office name, its planners, the HQs in `office.hqs`, the HQ name (`title`, `hq_name`), `editable` (`serve --edit`) and `layout_rev` (changes when the office is saved) |
 | `GET /api/usage` | Overall tokens and estimated cost of this HQ (`<data dir>/artifacts/usage.json`, kept across restarts and deleted tasks) |
@@ -282,4 +284,5 @@ The office is laid out automatically: a room per department (a desk per agent, a
 uv venv && source .venv/bin/activate && uv pip install -e ".[dev]" && pytest   # 478 tests, offline (mock model, local sandbox, a stdio MCP test server)
 ```
 
-The dashboard has no login, so keep it bound to `127.0.0.1` (the default) unless you put it behind your own auth.
+The dashboard has no login by default, so keep it bound to `127.0.0.1` (the default) unless you turn on the optional
+Google / Telegram login ([AUTH.md](AUTH.md)) or put it behind your own auth.

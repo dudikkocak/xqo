@@ -27,7 +27,8 @@ Options:
 | `--port N` | host port (default 8000, `XQO_HOST_PORT`) |
 | `--no-build` | reuse the built image |
 
-Dashboard: http://127.0.0.1:8000. It has **no login**, so it stays bound to 127.0.0.1.
+Dashboard: http://127.0.0.1:8000. It has **no login** by default, so it stays bound to 127.0.0.1. To reach it from
+other machines, turn on the optional Google / Telegram login and put it behind HTTPS: [AUTH.md](AUTH.md).
 
 Without the scripts: `docker compose up -d --build`.
 

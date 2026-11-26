@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xqo-flows-runner"
-version = "3.2.0"
+version = "3.2.1"
 description = "Headless remote worker for xqo flows: runs flow steps and whole flows with its own agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ license = "MIT"
 authors = [{name = "dudikkocak"}]
 dependencies = [
   "xqo>=3.0,<4",
-  "xqo-flows==3.2.0",
+  "xqo-flows==3.2.1",
 ]
 
 [project.optional-dependencies]

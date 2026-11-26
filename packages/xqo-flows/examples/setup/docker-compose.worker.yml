@@ -4,11 +4,11 @@
 # Nothing is published: the worker only connects out to the HQ's worker API.
 services:
   worker:
-    image: xqo:${XQO_VERSION:-3.2.0}
+    image: xqo:${XQO_VERSION:-3.2.1}
     build:
       context: ${XQO_SRC:-.}
       args:
-        VERSION: ${XQO_VERSION:-3.2.0}
+        VERSION: ${XQO_VERSION:-3.2.1}
         WITH_NODE: ${WITH_NODE:-0}
         PLUGINS: ${XQO_PLUGINS:-xqo-flows-runner}
     restart: unless-stopped

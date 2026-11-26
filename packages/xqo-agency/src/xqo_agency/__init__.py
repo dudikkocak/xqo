@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from xqo.api import Plugin
 
-__version__ = "3.2.0"
+__version__ = "3.2.1"
 
 
 class AgencyPlugin(Plugin):

@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.2.0
+## 3.2.1
 
 - **Optional login** (off by default, [docs/AUTH.md](docs/AUTH.md)): Google sign-in (OpenID Connect with PKCE) and
   Telegram (a bot link you approve in Telegram, no public domain needed), an allowlist of emails, `*@domain` and
@@ -10,6 +10,9 @@
   `{"ok": true}` without a sign-in. Cookie requests that change something must come from the same site.
 - `office.hqs` entries take `token_env`, sent to that HQ as a bearer token by the office relay.
 - `xqo serve` warns when it listens beyond localhost without login (not inside Docker, where the port mapping decides).
+
+## 3.2.0
+
 - New plugin package **`xqo-flows`**: a visual flow editor (FlowGram.AI free-layout, MIT, built into the
   package) at `/plugins/flows/editor.html`, with agent, remote, condition, approval and end steps. Steps run in
   parallel where lines fan out and joins wait only for live branches. Run state shows live on the canvas. Flows can

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xqo-sqlite"
-version = "3.1.1"
+version = "3.2.0"
 description = "SQLite event store for xqo"
 readme = "README.md"
 requires-python = ">=3.10"

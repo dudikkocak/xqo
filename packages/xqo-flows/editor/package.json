@@ -1,7 +1,7 @@
 {
   "name": "xqo-flows-editor",
   "private": true,
-  "version": "3.1.1",
+  "version": "3.2.0",
   "description": "The FlowGram.AI editor page of xqo-flows; built into ../src/xqo_flows/static/",
   "license": "MIT",
   "scripts": {

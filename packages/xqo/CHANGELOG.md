@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.2.0
 
 - New plugin package **`xqo-flows`**: a visual flow editor (FlowGram.AI free-layout, MIT, built into the
   package) at `/plugins/flows/editor.html`, with agent, remote, condition, approval and end steps. Steps run in

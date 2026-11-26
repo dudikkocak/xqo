@@ -11,7 +11,7 @@ from xqo.config import build
 
 
 def test_api_exports_are_importable_and_versioned():
-    assert api.__version__ == xqo.__version__ == "3.1.1"
+    assert api.__version__ == xqo.__version__ == "3.2.0"
     assert api.API_VERSION == 1 and api.ENTRY_POINT_GROUP == "xqo.plugins"
     missing = [n for n in api.__all__ if not hasattr(api, n)]
     assert not missing, missing

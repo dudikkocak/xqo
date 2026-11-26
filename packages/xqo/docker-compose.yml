@@ -1,11 +1,11 @@
 services:
   xqo:
     # Pin the version you run; an upgrade builds the next tag, a rollback goes back to this one (OPERATIONS.md)
-    image: xqo:${XQO_VERSION:-3.1.1}
+    image: xqo:${XQO_VERSION:-3.2.0}
     build:
       context: .
       args:
-        VERSION: ${XQO_VERSION:-3.1.1}
+        VERSION: ${XQO_VERSION:-3.2.0}
         WITH_NODE: ${WITH_NODE:-0}
         PLUGINS: ${XQO_PLUGINS:-}       # plugin packages to install, e.g. "xqo-schedules xqo-feeds"
     restart: unless-stopped

@@ -1,0 +1,37 @@
+{
+  "name": "draft-review-approve",
+  "title": "Draft, review, approve",
+  "description": "Two drafts in parallel, a review that picks one, a check, and your approval before the final step.",
+  "nodes": [
+    {"id": "start_0", "type": "start", "meta": {"position": {"x": 0, "y": 160}},
+     "data": {"title": "Start", "inputs": [{"name": "topic", "default": "a release note for the next version"}]}},
+    {"id": "draft_a", "type": "agent", "meta": {"position": {"x": 360, "y": 0}},
+     "data": {"title": "Draft A", "agent": "", "prompt": "Write a short draft of {{inputs.topic}}. Plain and direct."}},
+    {"id": "draft_b", "type": "agent", "meta": {"position": {"x": 360, "y": 320}},
+     "data": {"title": "Draft B", "agent": "", "prompt": "Write a short draft of {{inputs.topic}}. Friendly tone."}},
+    {"id": "review", "type": "agent", "meta": {"position": {"x": 740, "y": 160}},
+     "data": {"title": "Review", "agent": "", "prompt": "Pick the better draft and improve it. Start your answer with OK if it is ready, or REDO if neither works.\n\nA:\n{{draft_a.result}}\n\nB:\n{{draft_b.result}}"}},
+    {"id": "check", "type": "condition", "meta": {"position": {"x": 1120, "y": 160}},
+     "data": {"title": "Ready?", "conditions": [{"key": "ok", "left": "{{review.result}}", "op": "matches", "right": "^\\s*OK"}]}},
+    {"id": "approve", "type": "approval", "meta": {"position": {"x": 1480, "y": 60}},
+     "data": {"title": "Your approval", "question": "Publish this?\n\n{{review.result}}", "default": "reject"}},
+    {"id": "publish", "type": "agent", "meta": {"position": {"x": 1840, "y": 0}},
+     "data": {"title": "Finalize", "agent": "", "prompt": "Turn this into the final text, without the OK marker:\n\n{{review.result}}"}},
+    {"id": "end_ok", "type": "end", "meta": {"position": {"x": 2200, "y": 0}},
+     "data": {"title": "Published", "output": "{{publish.result}}"}},
+    {"id": "end_no", "type": "end", "meta": {"position": {"x": 1840, "y": 300}},
+     "data": {"title": "Not published", "output": "Not published ({{check.result}} / {{approve.result}}):\n\n{{review.result}}"}}
+  ],
+  "edges": [
+    {"sourceNodeID": "start_0", "targetNodeID": "draft_a"},
+    {"sourceNodeID": "start_0", "targetNodeID": "draft_b"},
+    {"sourceNodeID": "draft_a", "targetNodeID": "review"},
+    {"sourceNodeID": "draft_b", "targetNodeID": "review"},
+    {"sourceNodeID": "review", "targetNodeID": "check"},
+    {"sourceNodeID": "check", "targetNodeID": "approve", "sourcePortID": "ok"},
+    {"sourceNodeID": "check", "targetNodeID": "end_no", "sourcePortID": "else"},
+    {"sourceNodeID": "approve", "targetNodeID": "publish", "sourcePortID": "approve"},
+    {"sourceNodeID": "approve", "targetNodeID": "end_no", "sourcePortID": "reject"},
+    {"sourceNodeID": "publish", "targetNodeID": "end_ok"}
+  ]
+}

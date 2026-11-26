@@ -35,8 +35,11 @@ feeds = ["xqo-feeds==3.1.1"]
 automation = ["xqo-schedules==3.1.1", "xqo-feeds==3.1.1"]
 channels = ["xqo-channels==3.1.1"]
 peering = ["xqo-peering==3.1.1"]
+flows = ["xqo-flows==3.1.1"]
+flows-runner = ["xqo-flows-runner==3.1.1"]
 all = ["xqo-sqlite==3.1.1", "xqo-postgres==3.1.1", "xqo-docker==3.1.1", "xqo-toolchains==3.1.1", "xqo-agency==3.1.1",
-       "xqo-schedules==3.1.1", "xqo-feeds==3.1.1", "xqo-channels==3.1.1", "xqo-peering==3.1.1"]
+       "xqo-schedules==3.1.1", "xqo-feeds==3.1.1", "xqo-channels==3.1.1", "xqo-peering==3.1.1", "xqo-flows==3.1.1",
+       "xqo-flows-runner==3.1.1"]
 dev = ["pytest>=8", "pytest-timeout>=2.3", "httpx>=0.27"]
 
 [project.urls]

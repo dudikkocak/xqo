@@ -1,0 +1,17 @@
+{
+  "name": "hello",
+  "title": "Hello flow",
+  "description": "One agent step: the default agent answers a question. Edit it, then press Run.",
+  "nodes": [
+    {"id": "start_0", "type": "start", "meta": {"position": {"x": 0, "y": 0}},
+     "data": {"title": "Start", "inputs": [{"name": "question", "default": "What can this HQ do?"}]}},
+    {"id": "answer", "type": "agent", "meta": {"position": {"x": 380, "y": 0}},
+     "data": {"title": "Answer", "agent": "", "prompt": "Answer briefly: {{inputs.question}}"}},
+    {"id": "end_0", "type": "end", "meta": {"position": {"x": 760, "y": 0}},
+     "data": {"title": "End", "output": "{{answer.result}}"}}
+  ],
+  "edges": [
+    {"sourceNodeID": "start_0", "targetNodeID": "answer"},
+    {"sourceNodeID": "answer", "targetNodeID": "end_0"}
+  ]
+}

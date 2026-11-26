@@ -16,6 +16,8 @@ KNOWN = {
     "channels": ("xqo-channels", ("channels",)),
     "feeds": ("xqo-feeds", ("feeds", "feed_rules")),
     "peering": ("xqo-peering", ("peering",)),
+    "flows": ("xqo-flows", ("flows",)),
+    "flows_runner": ("xqo-flows-runner", ("flows_worker",)),
     "toolchains": ("xqo-toolchains", ()),
     "docker": ("xqo-docker", ()),
     "agency": ("xqo-agency", ()),

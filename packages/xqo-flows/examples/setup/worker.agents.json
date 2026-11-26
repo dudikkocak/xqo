@@ -1,0 +1,14 @@
+{
+  "name": "GPU box",
+  "agents": [
+    {"name": "builder", "skills": ["python", "build", "testing"]},
+    {"name": "trainer", "skills": ["ml", "gpu"]}
+  ],
+  "sandbox": {"backend": "auto", "timeout": 600, "network": false},
+  "flows_worker": {
+    "hq": "http://hq.example.internal:8200",
+    "name": "gpu-box",
+    "token_env": "XQO_WORKER_TOKEN",
+    "jobs": 2
+  }
+}

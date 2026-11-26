@@ -17,6 +17,8 @@ released together with the same version (starting at 3.0.0).
 | `xqo-feeds` | [packages/xqo-feeds](packages/xqo-feeds) | local feeds and rules that wake agents (needs `xqo-schedules`) |
 | `xqo-channels` | [packages/xqo-channels](packages/xqo-channels) | Telegram, WhatsApp, Instagram, X, Threads, Gmail and SMS |
 | `xqo-peering` | [packages/xqo-peering](packages/xqo-peering) | messages and files between separate HQs |
+| `xqo-flows` | [packages/xqo-flows](packages/xqo-flows) | visual workflows of agents (FlowGram.AI editor), approvals, remote steps |
+| `xqo-flows-runner` | [packages/xqo-flows-runner](packages/xqo-flows-runner) | `xqo worker`: a headless remote worker for flows |
 
 ```bash
 pip install xqo                  # the base package

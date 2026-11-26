@@ -1,0 +1,22 @@
+{
+  "name": "Main HQ",
+  "agents": [
+    {"name": "lead", "skills": ["planning", "coordination"]},
+    {"name": "scribe", "skills": ["writing", "docs"]}
+  ],
+  "flows": {
+    "max_running": 20,
+    "approval_timeout": 86400,
+    "agents_may_run": ["lead"],
+    "tool_timeout": 3600,
+    "listen": "0.0.0.0:8200",
+    "workers": {
+      "lease_seconds": 60,
+      "max_attempts": 2,
+      "allow": {
+        "gpu-box": {"token_env": "XQO_WORKER_GPU_BOX_TOKEN", "labels": ["gpu", "linux"]},
+        "mac-mini": {"token_env": "XQO_WORKER_MAC_MINI_TOKEN", "labels": ["macos", "ios"]}
+      }
+    }
+  }
+}

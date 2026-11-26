@@ -21,6 +21,8 @@ REQUIRED = {
     "xqo-schedules": ["xqo_schedules/static/ui.js"],
     "xqo-feeds": ["xqo_feeds/static/ui.js"],
     "xqo-peering": ["xqo_peering/static/ui.js"],
+    "xqo-flows": ["xqo_flows/static/ui.js", "xqo_flows/static/editor.html", "xqo_flows/static/editor.js",
+                  "xqo_flows/static/editor.css", "xqo_flows/examples/hello.json"],
 }
 
 

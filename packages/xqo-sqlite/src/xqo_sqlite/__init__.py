@@ -17,7 +17,7 @@ from typing import Iterable, Iterator
 
 from xqo.api import SEED_KINDS, EventStore, Plugin, register_store, store_path
 
-__version__ = "3.2.0"
+__version__ = "3.2.1"
 KEYS = {"backend", "path", "busy_timeout_ms"}
 
 
